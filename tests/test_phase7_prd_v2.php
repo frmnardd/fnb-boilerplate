@@ -93,20 +93,31 @@ if (file_exists($pdfPath)) {
 // 2. DATABASE SCHEMA EXTENSIONS (PRD v2.0)
 // ===================================================================
 // Tables: vouchers, franchise_leads
-$tables = $pdo->query("SELECT name FROM sqlite_master WHERE type='table'")->fetchAll(PDO::FETCH_COLUMN);
+$driver = Database::getInstance()->getActiveDriver();
+if ($driver === 'sqlite') {
+    $tables = $pdo->query("SELECT name FROM sqlite_master WHERE type='table'")->fetchAll(PDO::FETCH_COLUMN);
+    $menuCols = $pdo->query("PRAGMA table_info(menus)")->fetchAll(PDO::FETCH_COLUMN, 1);
+    $orderCols = $pdo->query("PRAGMA table_info(orders)")->fetchAll(PDO::FETCH_COLUMN, 1);
+} else {
+    $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+    $menuCols = $pdo->query("SHOW COLUMNS FROM menus")->fetchAll(PDO::FETCH_COLUMN);
+    $orderCols = $pdo->query("SHOW COLUMNS FROM orders")->fetchAll(PDO::FETCH_COLUMN);
+}
 assert_test("Tabel 'vouchers' terdaftar di database", in_array('vouchers', $tables, true));
 assert_test("Tabel 'franchise_leads' terdaftar di database", in_array('franchise_leads', $tables, true));
 
-// Columns in menus: calories, nutrition_info, ingredients_text, rating, halal_certified
-$menuCols = $pdo->query("PRAGMA table_info(menus)")->fetchAll(PDO::FETCH_COLUMN, 1);
 assert_test("Kolom 'calories' ada di tabel menus", in_array('calories', $menuCols, true));
 assert_test("Kolom 'nutrition_info' ada di tabel menus", in_array('nutrition_info', $menuCols, true));
 assert_test("Kolom 'ingredients_text' ada di tabel menus", in_array('ingredients_text', $menuCols, true));
 assert_test("Kolom 'rating' ada di tabel menus", in_array('rating', $menuCols, true));
 assert_test("Kolom 'halal_certified' ada di tabel menus", in_array('halal_certified', $menuCols, true));
 
-// Columns in orders: order_token, outlet_id, outlet_name, voucher_code, voucher_discount, delivery_fee
-$orderCols = $pdo->query("PRAGMA table_info(orders)")->fetchAll(PDO::FETCH_COLUMN, 1);
+assert_test("Kolom 'order_token' ada di tabel orders", in_array('order_token', $orderCols, true));
+assert_test("Kolom 'outlet_id' ada di tabel orders", in_array('outlet_id', $orderCols, true));
+assert_test("Kolom 'outlet_name' ada di tabel orders", in_array('outlet_name', $orderCols, true));
+assert_test("Kolom 'voucher_code' ada di tabel orders", in_array('voucher_code', $orderCols, true));
+assert_test("Kolom 'voucher_discount' ada di tabel orders", in_array('voucher_discount', $orderCols, true));
+assert_test("Kolom 'delivery_fee' ada di tabel orders", in_array('delivery_fee', $orderCols, true));
 assert_test("Kolom 'order_token' ada di tabel orders", in_array('order_token', $orderCols, true));
 assert_test("Kolom 'outlet_id' ada di tabel orders", in_array('outlet_id', $orderCols, true));
 assert_test("Kolom 'outlet_name' ada di tabel orders", in_array('outlet_name', $orderCols, true));

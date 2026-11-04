@@ -110,8 +110,13 @@ assert_test("Helper export_csv() tersedia di config/helpers.php", function_exist
 // ===================================================================
 // 5. EXTENDED DATABASE SCHEMA & POS/INVENTORY INTEGRATION
 // ===================================================================
-$menuColumns = $pdo->query("PRAGMA table_info(menus)")->fetchAll(PDO::FETCH_ASSOC);
-$columnNames = array_column($menuColumns, 'name');
+$driver = Database::getInstance()->getActiveDriver();
+if ($driver === 'sqlite') {
+    $menuColumns = $pdo->query("PRAGMA table_info(menus)")->fetchAll(PDO::FETCH_ASSOC);
+    $columnNames = array_column($menuColumns, 'name');
+} else {
+    $columnNames = $pdo->query("SHOW COLUMNS FROM menus")->fetchAll(PDO::FETCH_COLUMN);
+}
 assert_test("Tabel 'menus' memiliki kolom 'cost_price' (HPP)", in_array('cost_price', $columnNames, true));
 assert_test("Tabel 'menus' memiliki kolom 'station' (KITCHEN/BAR)", in_array('station', $columnNames, true));
 

@@ -988,12 +988,14 @@ if ($requestUri === '/admin/dashboard/stats' && $requestMethod === 'GET') {
         $days[$d] = 0;
     }
     try {
-        $stmt = $pdo->query("
+        $minDate = date('Y-m-d 00:00:00', strtotime('-14 days'));
+        $stmt = $pdo->prepare("
             SELECT DATE(created_at) as order_date, SUM(grand_total) as daily_total
             FROM orders
-            WHERE payment_status = 'PAID' AND created_at >= date('now', '-14 days')
+            WHERE payment_status = 'PAID' AND created_at >= :min_date
             GROUP BY DATE(created_at)
         ");
+        $stmt->execute(['min_date' => $minDate]);
         while ($row = $stmt->fetch()) {
             if (isset($days[$row['order_date']])) {
                 $days[$row['order_date']] = (int)$row['daily_total'];

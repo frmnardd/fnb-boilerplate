@@ -73,12 +73,14 @@ try {
 
 // 4. Peak Hours Heatmap Data (00 - 23)
 try {
+    $driver = Database::getInstance()->getActiveDriver();
+    $hourExpr = ($driver === 'sqlite') ? "strftime('%H', created_at)" : "HOUR(created_at)";
     $hourlyStats = $pdo->query("
         SELECT 
-            strftime('%H', created_at) as hour,
+            {$hourExpr} as hour,
             COUNT(*) as count
         FROM orders
-        GROUP BY hour
+        GROUP BY {$hourExpr}
         ORDER BY hour ASC
     ")->fetchAll();
 } catch (\Throwable $e) {
@@ -93,16 +95,19 @@ for ($i = 29; $i >= 0; $i--) {
 }
 
 try {
-    $trendRows = $pdo->query("
+    $minDate30 = date('Y-m-d 00:00:00', strtotime('-30 days'));
+    $trendStmt = $pdo->prepare("
         SELECT 
             DATE(created_at) as order_date,
             SUM(grand_total) as daily_revenue
         FROM orders
         WHERE payment_status = 'PAID'
-          AND created_at >= date('now', '-30 days')
+          AND created_at >= :min_date
         GROUP BY DATE(created_at)
         ORDER BY order_date ASC
-    ")->fetchAll();
+    ");
+    $trendStmt->execute(['min_date' => $minDate30]);
+    $trendRows = $trendStmt->fetchAll();
 
     foreach ($trendRows as $row) {
         if (isset($daysMap[$row['order_date']])) {
