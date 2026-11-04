@@ -1,0 +1,17 @@
+# Environment Config
+config/env.php
+
+# SQLite Database Files
+database/*.sqlite
+database/*.sqlite-journal
+
+# Uploaded Files
+storage/uploads/*
+!storage/uploads/.gitkeep
+public/uploads/*
+!public/uploads/.gitkeep
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,618 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * FnB B2B White-Label Web & CMS Boilerplate
+ * Front Controller & Complete Route Dispatcher (Public + Admin CMS)
+ */
+
+// Handle PHP built-in webserver static files
+if (php_sapi_name() === 'cli-server') {
+    $file = __DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    if (is_file($file)) {
+        return false;
+    }
+}
+
+// Load core configurations and helpers
+require_once dirname(__DIR__) . '/config/database.php';
+require_once dirname(__DIR__) . '/config/helpers.php';
+
+// App Environment & Debug Setup
+$debug = (bool)get_config('app.debug', true);
+if ($debug) {
+    ini_set('display_errors', '1');
+    ini_set('display_startup_errors', '1');
+    error_reporting(E_ALL);
+} else {
+    ini_set('display_errors', '0');
+    error_reporting(0);
+}
+
+// Set Default Timezone
+date_default_timezone_set(get_config('app.timezone', 'Asia/Jakarta'));
+
+// Start secure session
+start_session_safe();
+
+// Parse Request URI & Method
+$requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+$requestMethod = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+
+// ===================================================================
+// PUBLIC ROUTING (Customer & Health APIs)
+// ===================================================================
+
+// 1. Health Check Endpoint (JSON)
+if ($requestUri === '/api/health') {
+    try {
+        $pdo = db();
+        $driver = Database::getInstance()->getActiveDriver();
+        $settings = get_setting();
+        
+        $categoriesCount = (int)$pdo->query("SELECT COUNT(*) FROM categories")->fetchColumn();
+        $menusCount = (int)$pdo->query("SELECT COUNT(*) FROM menus")->fetchColumn();
+        $outletsCount = (int)$pdo->query("SELECT COUNT(*) FROM outlets")->fetchColumn();
+
+        json_response([
+            'status'     => 'healthy',
+            'phase'      => 'Phase 3: Admin CMS Integration (Active)',
+            'php_version'=> PHP_VERSION,
+            'db_driver'  => $driver,
+            'brand'      => $settings['site_name'] ?? 'Unknown',
+            'counts'     => [
+                'categories' => $categoriesCount,
+                'menus'      => $menusCount,
+                'outlets'    => $outletsCount,
+            ],
+            'timestamp'  => date('c'),
+        ]);
+    } catch (\Throwable $e) {
+        json_response([
+            'status'  => 'error',
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+// 2. Public Home Page
+if ($requestUri === '/') {
+    require dirname(__DIR__) . '/views/frontend/home.php';
+    exit;
+}
+
+// ===================================================================
+// AUTHENTICATION ROUTES (/admin/login, /admin/logout)
+// ===================================================================
+
+// Login Page (GET)
+if ($requestUri === '/admin/login' && $requestMethod === 'GET') {
+    if (is_logged_in()) {
+        redirect('/admin');
+    }
+    require dirname(__DIR__) . '/views/admin/login.php';
+    exit;
+}
+
+// Login Handler (POST)
+if ($requestUri === '/admin/login' && $requestMethod === 'POST') {
+    if (!verify_csrf_token()) {
+        flash('error', 'Token keamanan tidak valid atau telah kedaluwarsa. Silakan coba lagi.');
+        redirect('/admin/login');
+    }
+
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username LIMIT 1");
+    $stmt->execute(['username' => $username]);
+    $user = $stmt->fetch();
+
+    if ($user && password_verify($password, $user['password_hash'])) {
+        // Regenerate session id to prevent session fixation attacks
+        if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
+            session_regenerate_id(true);
+        }
+
+        $_SESSION['user'] = [
+            'id'       => $user['id'],
+            'username' => $user['username'],
+            'role'     => $user['role'],
+        ];
+
+        // Update last_login
+        $updateStmt = $pdo->prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = :id");
+        $updateStmt->execute(['id' => $user['id']]);
+
+        flash('success', 'Selamat datang kembali, ' . $user['username'] . '!');
+        redirect('/admin');
+    } else {
+        flash('error', 'Username atau password yang Anda masukkan salah.');
+        redirect('/admin/login');
+    }
+}
+
+// Logout Handler (GET)
+if ($requestUri === '/admin/logout') {
+    start_session_safe();
+    unset($_SESSION['user']);
+    session_destroy();
+    redirect('/admin/login');
+}
+
+// ===================================================================
+// ADMIN CMS DASHBOARD & STOCK APIS
+// ===================================================================
+
+// Dashboard Overview (GET)
+if ($requestUri === '/admin') {
+    require_auth();
+    require dirname(__DIR__) . '/views/admin/dashboard.php';
+    exit;
+}
+
+// One-Click Stock Toggle API (POST /admin/api/toggle-stock)
+if ($requestUri === '/admin/api/toggle-stock' && $requestMethod === 'POST') {
+    require_auth();
+    if (!verify_csrf_token()) {
+        json_response(['success' => false, 'message' => 'Token CSRF tidak valid.'], 403);
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+    if ($id <= 0) {
+        json_response(['success' => false, 'message' => 'ID menu tidak valid.'], 400);
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT is_available FROM menus WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+    $current = $stmt->fetch();
+
+    if (!$current) {
+        json_response(['success' => false, 'message' => 'Menu tidak ditemukan.'], 404);
+    }
+
+    $newStatus = (int)$current['is_available'] === 1 ? 0 : 1;
+    $updateStmt = $pdo->prepare("UPDATE menus SET is_available = :is_available WHERE id = :id");
+    $updateStmt->execute([
+        'is_available' => $newStatus,
+        'id'           => $id,
+    ]);
+
+    json_response([
+        'success'      => true,
+        'id'           => $id,
+        'is_available' => $newStatus,
+        'message'      => $newStatus === 1 ? 'Menu berhasil diubah menjadi Tersedia.' : 'Menu berhasil diubah menjadi Habis.',
+    ]);
+}
+
+// ===================================================================
+// MENUS CRUD ROUTES
+// ===================================================================
+
+// Menus Index List (GET)
+if ($requestUri === '/admin/menus') {
+    require_auth();
+    require dirname(__DIR__) . '/views/admin/menus/index.php';
+    exit;
+}
+
+// Menus Create Form (GET)
+if ($requestUri === '/admin/menus/create' && $requestMethod === 'GET') {
+    require_auth('admin');
+    $menu = [];
+    require dirname(__DIR__) . '/views/admin/menus/form.php';
+    exit;
+}
+
+// Menus Create Handler (POST)
+if ($requestUri === '/admin/menus/create' && $requestMethod === 'POST') {
+    require_auth('admin');
+    if (!verify_csrf_token()) {
+        flash('error', 'Token CSRF tidak valid.');
+        redirect('/admin/menus');
+    }
+
+    $name = trim($_POST['name'] ?? '');
+    $categoryId = (int)($_POST['category_id'] ?? 0);
+    $price = (int)($_POST['price'] ?? 0);
+    $strikePrice = !empty($_POST['strike_price']) ? (int)$_POST['strike_price'] : null;
+    $description = trim($_POST['description'] ?? '');
+    $isAvailable = isset($_POST['is_available']) ? 1 : 0;
+    $isFeatured = isset($_POST['is_featured']) ? 1 : 0;
+    $sortOrder = (int)($_POST['sort_order'] ?? 0);
+    $variantsJson = trim($_POST['variants_json'] ?? '');
+    $slug = slugify($name);
+
+    if (empty($name) || $categoryId <= 0) {
+        flash('error', 'Nama menu dan kategori wajib diisi.');
+        redirect('/admin/menus/create');
+    }
+
+    // Process photo upload if provided (Auto WebP 800px)
+    $imageUrl = '/assets/images/food-menu-1.png';
+    if (!empty($_FILES['image']['tmp_name'])) {
+        $upload = upload_image_webp($_FILES['image'], 'menus', 800, 80);
+        if ($upload['success']) {
+            $imageUrl = $upload['url'];
+        } else {
+            flash('error', 'Gagal unggah foto: ' . $upload['error']);
+            redirect('/admin/menus/create');
+        }
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare("
+        INSERT INTO menus (category_id, name, slug, description, price, strike_price, image_url, variants_json, is_available, is_featured, sort_order) 
+        VALUES (:category_id, :name, :slug, :description, :price, :strike_price, :image_url, :variants_json, :is_available, :is_featured, :sort_order)
+    ");
+    $stmt->execute([
+        'category_id'   => $categoryId,
+        'name'          => $name,
+        'slug'          => $slug . '-' . time(),
+        'description'   => $description,
+        'price'         => $price,
+        'strike_price'  => $strikePrice,
+        'image_url'     => $imageUrl,
+        'variants_json' => !empty($variantsJson) ? $variantsJson : null,
+        'is_available'  => $isAvailable,
+        'is_featured'   => $isFeatured,
+        'sort_order'    => $sortOrder,
+    ]);
+
+    flash('success', 'Menu "' . $name . '" berhasil ditambahkan.');
+    redirect('/admin/menus');
+}
+
+// Menus Edit Form (GET)
+if ($requestUri === '/admin/menus/edit' && $requestMethod === 'GET') {
+    require_auth();
+    $id = (int)($_GET['id'] ?? 0);
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT * FROM menus WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+    $menu = $stmt->fetch();
+
+    if (!$menu) {
+        flash('error', 'Menu tidak ditemukan.');
+        redirect('/admin/menus');
+    }
+
+    require dirname(__DIR__) . '/views/admin/menus/form.php';
+    exit;
+}
+
+// Menus Edit Handler (POST)
+if ($requestUri === '/admin/menus/edit' && $requestMethod === 'POST') {
+    require_auth();
+    if (!verify_csrf_token()) {
+        flash('error', 'Token CSRF tidak valid.');
+        redirect('/admin/menus');
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+    $name = trim($_POST['name'] ?? '');
+    $categoryId = (int)($_POST['category_id'] ?? 0);
+    $price = (int)($_POST['price'] ?? 0);
+    $strikePrice = !empty($_POST['strike_price']) ? (int)$_POST['strike_price'] : null;
+    $description = trim($_POST['description'] ?? '');
+    $isAvailable = isset($_POST['is_available']) ? 1 : 0;
+    $isFeatured = isset($_POST['is_featured']) ? 1 : 0;
+    $sortOrder = (int)($_POST['sort_order'] ?? 0);
+    $variantsJson = trim($_POST['variants_json'] ?? '');
+
+    $pdo = db();
+    $stmt = $pdo->prepare("SELECT * FROM menus WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+    $existing = $stmt->fetch();
+
+    if (!$existing) {
+        flash('error', 'Menu tidak ditemukan.');
+        redirect('/admin/menus');
+    }
+
+    $imageUrl = $existing['image_url'];
+    if (!empty($_FILES['image']['tmp_name'])) {
+        $upload = upload_image_webp($_FILES['image'], 'menus', 800, 80);
+        if ($upload['success']) {
+            $imageUrl = $upload['url'];
+        } else {
+            flash('error', 'Gagal unggah foto: ' . $upload['error']);
+            redirect('/admin/menus/edit?id=' . $id);
+        }
+    }
+
+    $updateStmt = $pdo->prepare("
+        UPDATE menus SET 
+            category_id = :category_id,
+            name = :name,
+            description = :description,
+            price = :price,
+            strike_price = :strike_price,
+            image_url = :image_url,
+            variants_json = :variants_json,
+            is_available = :is_available,
+            is_featured = :is_featured,
+            sort_order = :sort_order
+        WHERE id = :id
+    ");
+    $updateStmt->execute([
+        'category_id'   => $categoryId,
+        'name'          => $name,
+        'description'   => $description,
+        'price'         => $price,
+        'strike_price'  => $strikePrice,
+        'image_url'     => $imageUrl,
+        'variants_json' => !empty($variantsJson) ? $variantsJson : null,
+        'is_available'  => $isAvailable,
+        'is_featured'   => $isFeatured,
+        'sort_order'    => $sortOrder,
+        'id'            => $id,
+    ]);
+
+    flash('success', 'Perubahan menu "' . $name . '" berhasil disimpan.');
+    redirect('/admin/menus');
+}
+
+// Menus Delete Handler (POST)
+if ($requestUri === '/admin/menus/delete' && $requestMethod === 'POST') {
+    require_auth('admin');
+    if (!verify_csrf_token()) {
+        flash('error', 'Token CSRF tidak valid.');
+        redirect('/admin/menus');
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+    $pdo = db();
+    $stmt = $pdo->prepare("DELETE FROM menus WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+
+    flash('success', 'Menu berhasil dihapus.');
+    redirect('/admin/menus');
+}
+
+// ===================================================================
+// CATEGORIES CRUD ROUTES
+// ===================================================================
+
+// Categories Index (GET)
+if ($requestUri === '/admin/categories') {
+    require_auth('admin');
+    require dirname(__DIR__) . '/views/admin/categories/index.php';
+    exit;
+}
+
+// Categories Save Handler (POST)
+if ($requestUri === '/admin/categories/save' && $requestMethod === 'POST') {
+    require_auth('admin');
+    if (!verify_csrf_token()) {
+        flash('error', 'Token CSRF tidak valid.');
+        redirect('/admin/categories');
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+    $name = trim($_POST['name'] ?? '');
+    $sortOrder = (int)($_POST['sort_order'] ?? 0);
+
+    if (empty($name)) {
+        flash('error', 'Nama kategori wajib diisi.');
+        redirect('/admin/categories');
+    }
+
+    $pdo = db();
+    if ($id > 0) {
+        $stmt = $pdo->prepare("UPDATE categories SET name = :name, sort_order = :sort_order WHERE id = :id");
+        $stmt->execute(['name' => $name, 'sort_order' => $sortOrder, 'id' => $id]);
+        flash('success', 'Kategori berhasil diperbarui.');
+    } else {
+        $slug = slugify($name) . '-' . time();
+        $stmt = $pdo->prepare("INSERT INTO categories (name, slug, sort_order, is_active) VALUES (:name, :slug, :sort_order, 1)");
+        $stmt->execute(['name' => $name, 'slug' => $slug, 'sort_order' => $sortOrder]);
+        flash('success', 'Kategori baru berhasil ditambahkan.');
+    }
+
+    redirect('/admin/categories');
+}
+
+// Categories Delete Handler (POST)
+if ($requestUri === '/admin/categories/delete' && $requestMethod === 'POST') {
+    require_auth('admin');
+    if (!verify_csrf_token()) {
+        flash('error', 'Token CSRF tidak valid.');
+        redirect('/admin/categories');
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+    $pdo = db();
+    $stmt = $pdo->prepare("DELETE FROM categories WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+
+    flash('success', 'Kategori berhasil dihapus.');
+    redirect('/admin/categories');
+}
+
+// ===================================================================
+// OUTLETS CRUD ROUTES
+// ===================================================================
+
+// Outlets Index (GET)
+if ($requestUri === '/admin/outlets') {
+    require_auth();
+    require dirname(__DIR__) . '/views/admin/outlets/index.php';
+    exit;
+}
+
+// Outlets Save Handler (POST)
+if ($requestUri === '/admin/outlets/save' && $requestMethod === 'POST') {
+    require_auth('admin');
+    if (!verify_csrf_token()) {
+        flash('error', 'Token CSRF tidak valid.');
+        redirect('/admin/outlets');
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+    $name = trim($_POST['name'] ?? '');
+    $address = trim($_POST['address'] ?? '');
+    $openHours = trim($_POST['open_hours'] ?? '08:00 - 22:00 WIB');
+    $gmapsLink = trim($_POST['gmaps_link'] ?? '');
+    $gofoodUrl = trim($_POST['gofood_url'] ?? '');
+    $grabfoodUrl = trim($_POST['grabfood_url'] ?? '');
+    $shopeefoodUrl = trim($_POST['shopeefood_url'] ?? '');
+
+    if (empty($name) || empty($address)) {
+        flash('error', 'Nama dan alamat cabang wajib diisi.');
+        redirect('/admin/outlets');
+    }
+
+    $pdo = db();
+    if ($id > 0) {
+        $stmt = $pdo->prepare("
+            UPDATE outlets SET 
+                name = :name, 
+                address = :address, 
+                open_hours = :open_hours, 
+                gmaps_link = :gmaps_link, 
+                gofood_url = :gofood_url, 
+                grabfood_url = :grabfood_url, 
+                shopeefood_url = :shopeefood_url 
+            WHERE id = :id
+        ");
+        $stmt->execute([
+            'name'           => $name,
+            'address'        => $address,
+            'open_hours'     => $openHours,
+            'gmaps_link'     => !empty($gmapsLink) ? $gmapsLink : null,
+            'gofood_url'     => !empty($gofoodUrl) ? $gofoodUrl : null,
+            'grabfood_url'   => !empty($grabfoodUrl) ? $grabfoodUrl : null,
+            'shopeefood_url' => !empty($shopeefoodUrl) ? $shopeefoodUrl : null,
+            'id'             => $id,
+        ]);
+        flash('success', 'Data cabang berhasil diperbarui.');
+    } else {
+        $stmt = $pdo->prepare("
+            INSERT INTO outlets (name, address, open_hours, gmaps_link, gofood_url, grabfood_url, shopeefood_url, is_active) 
+            VALUES (:name, :address, :open_hours, :gmaps_link, :gofood_url, :grabfood_url, :shopeefood_url, 1)
+        ");
+        $stmt->execute([
+            'name'           => $name,
+            'address'        => $address,
+            'open_hours'     => $openHours,
+            'gmaps_link'     => !empty($gmapsLink) ? $gmapsLink : null,
+            'gofood_url'     => !empty($gofoodUrl) ? $gofoodUrl : null,
+            'grabfood_url'   => !empty($grabfoodUrl) ? $grabfoodUrl : null,
+            'shopeefood_url' => !empty($shopeefoodUrl) ? $shopeefoodUrl : null,
+        ]);
+        flash('success', 'Cabang baru berhasil ditambahkan.');
+    }
+
+    redirect('/admin/outlets');
+}
+
+// Outlets Delete Handler (POST)
+if ($requestUri === '/admin/outlets/delete' && $requestMethod === 'POST') {
+    require_auth('admin');
+    if (!verify_csrf_token()) {
+        flash('error', 'Token CSRF tidak valid.');
+        redirect('/admin/outlets');
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+    $pdo = db();
+    $stmt = $pdo->prepare("DELETE FROM outlets WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+
+    flash('success', 'Cabang berhasil dihapus.');
+    redirect('/admin/outlets');
+}
+
+// ===================================================================
+// WHITE-LABEL BRAND SETTINGS ROUTES
+// ===================================================================
+
+// Settings Index (GET)
+if ($requestUri === '/admin/settings' && $requestMethod === 'GET') {
+    require_auth('admin');
+    require dirname(__DIR__) . '/views/admin/settings/index.php';
+    exit;
+}
+
+// Settings Save Handler (POST)
+if ($requestUri === '/admin/settings' && $requestMethod === 'POST') {
+    require_auth('admin');
+    if (!verify_csrf_token()) {
+        flash('error', 'Token CSRF tidak valid.');
+        redirect('/admin/settings');
+    }
+
+    $siteName = trim($_POST['site_name'] ?? 'Kopi & Rasa Nusantara');
+    $tagline = trim($_POST['tagline'] ?? '');
+    $primaryColor = trim($_POST['primary_color'] ?? '#FF6B35');
+    $secondaryColor = trim($_POST['secondary_color'] ?? '#1E293B');
+    $waOrder = clean_phone_number($_POST['whatsapp_order_number'] ?? '');
+    $waFranchise = clean_phone_number($_POST['whatsapp_franchise_number'] ?? '');
+    $waGreeting = trim($_POST['whatsapp_greeting_template'] ?? '');
+    $announcementActive = isset($_POST['is_announcement_active']) ? 1 : 0;
+    $announcementText = trim($_POST['announcement_text'] ?? '');
+    $metaPixel = trim($_POST['meta_pixel_id'] ?? '');
+    $tiktokPixel = trim($_POST['tiktok_pixel_id'] ?? '');
+    $googleAnalytics = trim($_POST['google_analytics_id'] ?? '');
+
+    $pdo = db();
+    $stmt = $pdo->prepare("
+        UPDATE settings SET 
+            site_name = :site_name,
+            tagline = :tagline,
+            primary_color = :primary_color,
+            secondary_color = :secondary_color,
+            whatsapp_order_number = :whatsapp_order_number,
+            whatsapp_franchise_number = :whatsapp_franchise_number,
+            whatsapp_greeting_template = :whatsapp_greeting_template,
+            is_announcement_active = :is_announcement_active,
+            announcement_text = :announcement_text,
+            meta_pixel_id = :meta_pixel_id,
+            tiktok_pixel_id = :tiktok_pixel_id,
+            google_analytics_id = :google_analytics_id
+        WHERE id = 1
+    ");
+    $stmt->execute([
+        'site_name'                  => $siteName,
+        'tagline'                    => $tagline,
+        'primary_color'              => $primaryColor,
+        'secondary_color'            => $secondaryColor,
+        'whatsapp_order_number'      => $waOrder,
+        'whatsapp_franchise_number'  => !empty($waFranchise) ? $waFranchise : null,
+        'whatsapp_greeting_template' => !empty($waGreeting) ? $waGreeting : null,
+        'is_announcement_active'     => $announcementActive,
+        'announcement_text'          => !empty($announcementText) ? $announcementText : null,
+        'meta_pixel_id'              => !empty($metaPixel) ? $metaPixel : null,
+        'tiktok_pixel_id'            => !empty($tiktokPixel) ? $tiktokPixel : null,
+        'google_analytics_id'        => !empty($googleAnalytics) ? $googleAnalytics : null,
+    ]);
+
+    flash('success', 'Konfigurasi Brand (White-Label) berhasil diperbarui!');
+    redirect('/admin/settings');
+}
+
+// Fallback 404
+http_response_code(404);
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>404 Halaman Tidak Ditemukan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 flex items-center justify-center min-h-screen p-4">
+    <div class="text-center space-y-4 max-w-sm">
+        <span class="text-6xl block">☕</span>
+        <h1 class="text-2xl font-black text-slate-900">404 - Halaman Tidak Ditemukan</h1>
+        <p class="text-xs text-slate-500">Halaman yang Anda tuju mungkin telah dipindahkan atau tautan yang Anda klik tidak tepat.</p>
+        <a href="/" class="inline-block px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs shadow hover:bg-slate-800 transition">
+            Kembali ke Beranda
+        </a>
+    </div>
+</body>
+</html>
