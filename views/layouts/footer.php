@@ -28,7 +28,7 @@ $settings = get_setting();
                         <a href="<?= format_whatsapp_url($settings['whatsapp_order_number'] ?? '', 'Halo, saya ingin bertanya') ?>" target="_blank" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-emerald-600 text-white flex items-center justify-center transition" title="WhatsApp Customer Service">
                             <?= icon('whatsapp', 'w-4 h-4') ?>
                         </a>
-                        <a href="#home" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition" title="Beranda">
+                        <a href="https://fnbtech.biz.id/" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition" title="Situs Resmi Kopi & Rasa Nusantara">
                             <?= icon('globe', 'w-4 h-4') ?>
                         </a>
                     </div>
@@ -64,8 +64,8 @@ $settings = get_setting();
                             <span class="text-amber-400 shrink-0 mt-0.5"><?= icon('trending-up', 'w-4 h-4') ?></span>
                             <div>
                                 <span class="block text-slate-500 font-semibold text-[11px]">Kemitraan & Franchise:</span>
-                                <a href="<?= format_whatsapp_url($settings['whatsapp_franchise_number'] ?? '6281298765432') ?>" target="_blank" class="text-white hover:text-amber-400 font-medium">
-                                    +<?= e($settings['whatsapp_franchise_number'] ?? '6281298765432') ?>
+                                <a href="<?= format_whatsapp_url($settings['whatsapp_franchise_number'] ?? '6281288882026') ?>" target="_blank" class="text-white hover:text-amber-400 font-medium">
+                                    +<?= e($settings['whatsapp_franchise_number'] ?? '6281288882026') ?>
                                 </a>
                             </div>
                         </li>
@@ -112,8 +112,8 @@ $settings = get_setting();
                         Kebijakan Refund
                     </button>
                     <span>•</span>
-                    <a href="/admin/login" class="text-slate-400 hover:text-primary transition font-bold underline underline-offset-2 flex items-center gap-1">
-                        <?= icon('lock', 'w-3 h-3') ?>
+                    <a href="/admin" class="text-slate-400 hover:text-primary transition font-bold underline underline-offset-2 flex items-center gap-1.5">
+                        <?= icon('shield-check', 'w-3.5 h-3.5') ?>
                         <span>Portal Admin / Kasir</span>
                     </a>
                 </div>

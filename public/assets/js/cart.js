@@ -1,6 +1,6 @@
 /**
- * FnB Boilerplate - Alpine.js Cart & Omnichannel Ordering Engine (PRD v2.0)
- * Multi-Outlet Routing, Instant QRIS Dual Checkout, Voucher Engine, & Dynamic Modifiers.
+ * FnB Boilerplate - Alpine.js Cart & Omnichannel Ordering Engine (PRD v2.1)
+ * Multi-Outlet Routing, Instant QRIS Dual Checkout, Reactive Voucher Engine, & Dynamic Modifiers.
  */
 
 document.addEventListener('alpine:init', () => {
@@ -16,10 +16,15 @@ document.addEventListener('alpine:init', () => {
             pickup_time: '',
             phone: '',
             address: '',
+            deliveryZone: 'near', // 'near' (<3km) | 'medium' (3-6km) | 'far' (6-10km)
             notes: ''
         },
 
-        // Outlets Data (Senopati, Braga, Malioboro)
+        // Active Order Token for Header Quick Tracker Shortcut (FR-204)
+        activeOrderToken: '',
+        activeOrderId: null,
+
+        // Outlets Data (Senopati, Braga, Malioboro) - PRD v2.1 (FR-205)
         outlets: [
             {
                 id: 1,
@@ -36,7 +41,7 @@ document.addEventListener('alpine:init', () => {
                 name: 'Cabang Braga Heritage',
                 city: 'Bandung',
                 address: 'Jl. Braga No. 88, Sumur Bandung, Kota Bandung',
-                whatsapp: '6281233334444',
+                whatsapp: '6281211113333',
                 hours: '07:30 - 22:30 WIB'
             },
             {
@@ -45,19 +50,32 @@ document.addEventListener('alpine:init', () => {
                 name: 'Cabang Malioboro Heritage',
                 city: 'Yogyakarta',
                 address: 'Jl. Malioboro No. 120, Gedong Tengen, Kota Yogyakarta',
-                whatsapp: '6281255556666',
+                whatsapp: '6281211114444',
                 hours: '08:00 - 23:30 WIB'
             }
         ],
         activeOutlet: null,
 
-        // Voucher State (FR-04)
-        voucherCodeInput: '',
-        appliedVoucher: null,
-        voucherError: '',
-        voucherSuccess: '',
+        // Branch-Isolated Inventory State (GAP-205 & FR-205)
+        // Initial setup: Menu id 6 (Mie Goreng Jawa Nyemek) is HABIS in Senopati, but TERSEDIA in Braga and Malioboro
+        branchInventory: {
+            senopati: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: false, 7: true, 8: true },
+            braga:    { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true,  7: true, 8: true },
+            malioboro:{ 1: true, 2: true, 3: true, 4: true, 5: true, 6: true,  7: true, 8: true }
+        },
 
-        // Variant Modal State (FR-03)
+        // Reactive Voucher Promo Engine State (FR-202, BUG-202, UAT-202, UAT-203)
+        voucherCodeInput: '',
+        activeVoucherCode: '',
+        appliedVoucher: null,
+        voucherStatus: {
+            isValid: false,
+            discountAmount: 0,
+            message: '',
+            statusType: '' // 'success' | 'error' | ''
+        },
+
+        // Variant Modal State (FR-03 & FR-206)
         variantModal: {
             isOpen: false,
             menu: null,
@@ -90,6 +108,20 @@ document.addEventListener('alpine:init', () => {
             this.activeOutlet = this.outlets[0];
 
             try {
+                // 1. Load active order token
+                const savedOrderToken = localStorage.getItem('fnb_active_order_token');
+                if (savedOrderToken) {
+                    this.activeOrderToken = savedOrderToken;
+                    this.activeOrderId = localStorage.getItem('fnb_active_order_id');
+                }
+
+                // 2. Load branch stock mapping
+                const savedBranchStock = localStorage.getItem('fnb_branch_stock_v21');
+                if (savedBranchStock) {
+                    this.branchInventory = Object.assign(this.branchInventory, JSON.parse(savedBranchStock));
+                }
+
+                // 3. Load cart items
                 const saved = localStorage.getItem('fnb_cart_items');
                 if (saved) {
                     this.items = JSON.parse(saved);
@@ -102,6 +134,7 @@ document.addEventListener('alpine:init', () => {
                     });
                 }
 
+                // 4. Load customer info
                 const savedCustomer = localStorage.getItem('fnb_customer_info');
                 if (savedCustomer) {
                     this.customer = Object.assign(this.customer, JSON.parse(savedCustomer));
@@ -113,6 +146,7 @@ document.addEventListener('alpine:init', () => {
                     }
                 }
 
+                // 5. Load active outlet
                 const savedOutlet = localStorage.getItem('fnb_active_outlet');
                 if (savedOutlet) {
                     const parsed = JSON.parse(savedOutlet);
@@ -120,9 +154,14 @@ document.addEventListener('alpine:init', () => {
                     if (found) this.activeOutlet = found;
                 }
 
+                // 6. Load active voucher
                 const savedVoucher = localStorage.getItem('fnb_active_voucher');
                 if (savedVoucher) {
-                    this.appliedVoucher = JSON.parse(savedVoucher);
+                    const parsedV = JSON.parse(savedVoucher);
+                    if (parsedV && parsedV.code) {
+                        this.activeVoucherCode = parsedV.code;
+                        this.recalculateVoucher();
+                    }
                 }
             } catch (e) {
                 console.error('Failed to load cart from localStorage', e);
@@ -155,14 +194,29 @@ document.addEventListener('alpine:init', () => {
                 localStorage.setItem('fnb_cart_items', JSON.stringify(this.items));
                 localStorage.setItem('fnb_customer_info', JSON.stringify(this.customer));
                 localStorage.setItem('fnb_active_outlet', JSON.stringify(this.activeOutlet));
-                if (this.appliedVoucher) {
-                    localStorage.setItem('fnb_active_voucher', JSON.stringify(this.appliedVoucher));
+                localStorage.setItem('fnb_branch_stock_v21', JSON.stringify(this.branchInventory));
+                
+                if (this.activeVoucherCode) {
+                    localStorage.setItem('fnb_active_voucher', JSON.stringify({
+                        code: this.activeVoucherCode,
+                        applied: this.appliedVoucher
+                    }));
                 } else {
                     localStorage.removeItem('fnb_active_voucher');
                 }
             } catch (e) {
                 console.error('Failed to save cart to localStorage', e);
             }
+        },
+
+        // Check if menu is available in the currently selected branch
+        isMenuAvailable(menuId) {
+            const slug = this.activeOutlet ? this.activeOutlet.slug : 'senopati';
+            const stock = this.branchInventory[slug];
+            if (stock && stock[menuId] !== undefined) {
+                return Boolean(stock[menuId]);
+            }
+            return true;
         },
 
         setActiveOutlet(slugOrId) {
@@ -196,9 +250,12 @@ document.addEventListener('alpine:init', () => {
             this.productDetailModal.menu = null;
         },
 
-        // --- FR-03: Dynamic Category Variant Modal ---
+        // --- FR-03 & FR-206: Dynamic Category Variant Modal with Nutrition & Halal Header ---
         openVariantModal(menu) {
-            if (!menu.is_available) return;
+            if (!this.isMenuAvailable(menu.id)) {
+                alert(`Menu "${menu.name}" saat ini sedang HABIS di ${this.activeOutlet.name}. Silakan pilih menu lain atau ganti cabang.`);
+                return;
+            }
 
             let parsedVariants = null;
             if (menu.variants_json) {
@@ -251,90 +308,102 @@ document.addEventListener('alpine:init', () => {
             return price;
         },
 
-        getModalTotalPrice() {
+        getModalLineTotal() {
             return this.getModalUnitPrice() * (this.variantModal.qty || 1);
         },
 
-        confirmVariantSelection() {
+        addModalItemToCart() {
             const menu = this.variantModal.menu;
             if (!menu) return;
 
-            const selectedList = Object.entries(this.variantModal.selectedChoices).map(([group, choice]) => {
-                return {
-                    group: group,
-                    name: choice.name,
-                    extra_price: choice.extra_price || 0
-                };
+            const selectedList = [];
+            let totalExtra = 0;
+            Object.entries(this.variantModal.selectedChoices).forEach(([groupName, choice]) => {
+                if (choice) {
+                    const extra = parseInt(choice.extra_price, 10) || 0;
+                    totalExtra += extra;
+                    selectedList.push({
+                        group: groupName,
+                        name: choice.name,
+                        extra_price: extra
+                    });
+                }
             });
 
-            const selectedDict = {};
-            selectedList.forEach(item => {
-                selectedDict[item.group] = item.name;
-            });
+            const basePrice = parseInt(menu.price, 10) || 0;
+            const unitPrice = basePrice + totalExtra;
+            const qty = Math.max(1, parseInt(this.variantModal.qty, 10) || 1);
 
-            const unitPrice = this.getModalUnitPrice();
-            const qty = this.variantModal.qty || 1;
+            const variantKey = selectedList.map(s => `${s.group}:${s.name}`).sort().join('|');
+            const cartItemId = `${menu.id}_${variantKey}_${this.variantModal.itemNotes.trim()}`;
 
-            this.addItem({
-                id: menu.id,
-                name: menu.name,
-                image_url: menu.image_url,
-                category_id: menu.category_id || 1,
-                station: menu.station || 'BAR',
-                base_price: parseInt(menu.price, 10),
-                unit_price: unitPrice,
-                calculated_price: unitPrice * qty,
-                variants: selectedList,
-                selected_variants: selectedDict,
-                notes: this.variantModal.itemNotes.trim(),
-                qty: qty,
-                quantity: qty
-            });
+            const existingIndex = this.items.findIndex(item => item.cart_item_id === cartItemId);
+
+            if (existingIndex > -1) {
+                this.items[existingIndex].qty += qty;
+                this.items[existingIndex].quantity = this.items[existingIndex].qty;
+                this.items[existingIndex].calculated_price = this.items[existingIndex].unit_price * this.items[existingIndex].qty;
+            } else {
+                this.items.push({
+                    cart_item_id: cartItemId,
+                    id: menu.id,
+                    name: menu.name,
+                    slug: menu.slug || '',
+                    category_id: menu.category_id || 1,
+                    base_price: basePrice,
+                    unit_price: unitPrice,
+                    qty: qty,
+                    quantity: qty,
+                    calculated_price: unitPrice * qty,
+                    image_url: menu.image_url || '/assets/images/menu-kopi-aren.webp',
+                    station: menu.station || 'KITCHEN',
+                    variants: selectedList,
+                    notes: this.variantModal.itemNotes.trim()
+                });
+            }
 
             this.closeVariantModal();
+            this.save();
+            this.recalculateVoucher();
             this.openDrawer();
         },
 
         addItemDirect(menu) {
-            const unitPrice = parseInt(menu.price, 10);
-            this.addItem({
-                id: menu.id,
-                name: menu.name,
-                image_url: menu.image_url,
-                category_id: menu.category_id || 1,
-                station: menu.station || 'BAR',
-                base_price: unitPrice,
-                unit_price: unitPrice,
-                calculated_price: unitPrice,
-                variants: [],
-                selected_variants: {},
-                notes: '',
-                qty: 1,
-                quantity: 1
-            });
-            this.openDrawer();
-        },
+            if (!this.isMenuAvailable(menu.id)) {
+                alert(`Menu "${menu.name}" saat ini sedang HABIS di ${this.activeOutlet.name}. Silakan pilih menu lain atau ganti cabang.`);
+                return;
+            }
 
-        addItem(newItem) {
-            const existingIndex = this.items.findIndex(item => {
-                return item.id === newItem.id &&
-                       JSON.stringify(item.variants) === JSON.stringify(newItem.variants) &&
-                       item.notes === newItem.notes;
-            });
+            const basePrice = parseInt(menu.price, 10) || 0;
+            const cartItemId = `${menu.id}_direct`;
+            const existingIndex = this.items.findIndex(item => item.cart_item_id === cartItemId);
 
             if (existingIndex > -1) {
-                this.items[existingIndex].qty += newItem.qty;
+                this.items[existingIndex].qty += 1;
                 this.items[existingIndex].quantity = this.items[existingIndex].qty;
                 this.items[existingIndex].calculated_price = this.items[existingIndex].unit_price * this.items[existingIndex].qty;
             } else {
-                newItem.cart_item_id = 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-                newItem.quantity = newItem.qty;
-                newItem.calculated_price = newItem.unit_price * newItem.qty;
-                this.items.push(newItem);
+                this.items.push({
+                    cart_item_id: cartItemId,
+                    id: menu.id,
+                    name: menu.name,
+                    slug: menu.slug || '',
+                    category_id: menu.category_id || 1,
+                    base_price: basePrice,
+                    unit_price: basePrice,
+                    qty: 1,
+                    quantity: 1,
+                    calculated_price: basePrice,
+                    image_url: menu.image_url || '/assets/images/menu-kopi-aren.webp',
+                    station: menu.station || 'KITCHEN',
+                    variants: [],
+                    notes: ''
+                });
             }
 
             this.save();
             this.recalculateVoucher();
+            this.openDrawer();
         },
 
         removeItem(cartItemId) {
@@ -372,7 +441,9 @@ document.addEventListener('alpine:init', () => {
 
         clearCart() {
             this.items = [];
+            this.activeVoucherCode = '';
             this.appliedVoucher = null;
+            this.voucherStatus = { isValid: false, discountAmount: 0, message: '', statusType: '' };
             this.save();
         },
 
@@ -384,107 +455,124 @@ document.addEventListener('alpine:init', () => {
             return this.items.reduce((sum, item) => sum + ((item.unit_price || item.base_price || 0) * (item.qty || 1)), 0);
         },
 
-        // --- FR-04: Interactive Voucher Promo Engine ---
-        applyVoucher(rawCode) {
-            this.voucherError = '';
-            this.voucherSuccess = '';
-            const code = (rawCode || this.voucherCodeInput || '').trim().toUpperCase();
-
-            if (!code) {
-                this.voucherError = 'Silakan masukkan kode voucher.';
-                return;
+        // --- FR-202, BUG-202, UAT-202, UAT-203: Reactive Promo Voucher Evaluator ---
+        evaluatePromo(cartItems, subtotal, activeCode) {
+            if (!activeCode) {
+                return { isValid: false, discountAmount: 0, message: '', statusType: '' };
             }
 
-            if (this.items.length === 0) {
-                this.voucherError = 'Keranjang masih kosong, tambahkan menu dahulu.';
-                return;
-            }
+            const code = activeCode.trim().toUpperCase();
 
-            const subtotal = this.getSubtotal();
+            if (code === 'KENYANG2') {
+                const minSubtotal = 60000;
+                if (subtotal < minSubtotal) {
+                    const selisih = minSubtotal - subtotal;
+                    return {
+                        isValid: false,
+                        discountAmount: 0,
+                        message: `Minimal transaksi Rp 60.000 untuk memakai voucher KENYANG2 (kurang ${this.formatRupiah(selisih)}).`,
+                        statusType: 'error'
+                    };
+                }
+                return {
+                    isValid: true,
+                    discountAmount: 15000,
+                    message: 'Voucher KENYANG2 berhasil diterapkan! Hemat Rp 15.000.',
+                    statusType: 'success'
+                };
+            }
 
             if (code === 'KOPIASIK') {
-                // 20% discount specifically on Coffee / Kopi items
                 let coffeeSubtotal = 0;
-                this.items.forEach(item => {
+                (cartItems || []).forEach(item => {
                     const name = (item.name || '').toLowerCase();
                     const isCoffee = item.category_id === 1 || name.includes('kopi') || name.includes('brew') || item.station === 'BAR';
                     if (isCoffee) {
-                        coffeeSubtotal += (item.unit_price * item.qty);
+                        coffeeSubtotal += ((item.unit_price || item.calculated_price || 0) * (item.qty || item.quantity || 1));
                     }
                 });
 
                 if (coffeeSubtotal === 0) {
-                    this.voucherError = 'Voucher KOPIASIK hanya berlaku untuk menu Kopi Susu / Kopi Nusantara.';
-                    return;
+                    return {
+                        isValid: false,
+                        discountAmount: 0,
+                        message: 'Voucher KOPIASIK khusus untuk pembelian menu Kopi Nusantara.',
+                        statusType: 'error'
+                    };
                 }
 
                 const discount = Math.round(coffeeSubtotal * 0.20);
-                this.appliedVoucher = {
-                    code: 'KOPIASIK',
-                    title: 'Diskon 20% Kopi Susu',
-                    discount: discount,
-                    type: 'PERCENT',
-                    value: 20
+                return {
+                    isValid: true,
+                    discountAmount: discount,
+                    message: `Voucher KOPIASIK berhasil diterapkan! Hemat ${this.formatRupiah(discount)}.`,
+                    statusType: 'success'
                 };
-                this.voucherSuccess = `Voucher KOPIASIK berhasil diterapkan! Hemat ${this.formatRupiah(discount)}.`;
-                this.voucherCodeInput = '';
-                this.save();
-            } else if (code === 'KENYANG2') {
-                // Rp 15.000 discount with minimum subtotal Rp 60.000
-                if (subtotal < 60000) {
-                    this.voucherError = `Voucher KENYANG2 memerlukan minimum belanja Rp 60.000 (Kurang ${this.formatRupiah(60000 - subtotal)}).`;
-                    return;
-                }
-
-                const discount = 15000;
-                this.appliedVoucher = {
-                    code: 'KENYANG2',
-                    title: 'Hemat Rp 15.000 Kenyang',
-                    discount: discount,
-                    type: 'FLAT',
-                    value: 15000
-                };
-                this.voucherSuccess = `Voucher KENYANG2 berhasil diterapkan! Hemat ${this.formatRupiah(discount)}.`;
-                this.voucherCodeInput = '';
-                this.save();
-            } else {
-                this.voucherError = 'Kode voucher tidak valid atau telah berakhir.';
             }
+
+            return {
+                isValid: false,
+                discountAmount: 0,
+                message: 'Kode voucher tidak valid atau telah kedaluwarsa.',
+                statusType: 'error'
+            };
+        },
+
+        applyVoucher(rawCode) {
+            const code = (rawCode || this.voucherCodeInput || '').trim().toUpperCase();
+
+            if (!code) {
+                this.activeVoucherCode = '';
+                this.appliedVoucher = null;
+                this.voucherStatus = {
+                    isValid: false,
+                    discountAmount: 0,
+                    message: 'Silakan masukkan kode voucher.',
+                    statusType: 'error'
+                };
+                return;
+            }
+
+            this.activeVoucherCode = code;
+            this.recalculateVoucher();
+            this.voucherCodeInput = '';
         },
 
         removeVoucher() {
+            this.activeVoucherCode = '';
             this.appliedVoucher = null;
-            this.voucherError = '';
-            this.voucherSuccess = 'Voucher berhasil dilepas.';
+            this.voucherStatus = {
+                isValid: false,
+                discountAmount: 0,
+                message: 'Voucher berhasil dilepas.',
+                statusType: ''
+            };
             this.save();
         },
 
         recalculateVoucher() {
-            if (!this.appliedVoucher) return;
-            const code = this.appliedVoucher.code;
-            const subtotal = this.getSubtotal();
-
-            if (code === 'KOPIASIK') {
-                let coffeeSubtotal = 0;
-                this.items.forEach(item => {
-                    const name = (item.name || '').toLowerCase();
-                    const isCoffee = item.category_id === 1 || name.includes('kopi') || name.includes('brew') || item.station === 'BAR';
-                    if (isCoffee) {
-                        coffeeSubtotal += (item.unit_price * item.qty);
-                    }
-                });
-                if (coffeeSubtotal === 0) {
-                    this.appliedVoucher = null;
-                } else {
-                    this.appliedVoucher.discount = Math.round(coffeeSubtotal * 0.20);
-                }
-            } else if (code === 'KENYANG2') {
-                if (subtotal < 60000) {
-                    this.appliedVoucher = null;
-                } else {
-                    this.appliedVoucher.discount = 15000;
-                }
+            if (!this.activeVoucherCode) {
+                this.appliedVoucher = null;
+                this.voucherStatus = { isValid: false, discountAmount: 0, message: '', statusType: '' };
+                this.save();
+                return;
             }
+
+            const evalResult = this.evaluatePromo(this.items, this.getSubtotal(), this.activeVoucherCode);
+            this.voucherStatus = evalResult;
+
+            if (evalResult.isValid) {
+                this.appliedVoucher = {
+                    code: this.activeVoucherCode,
+                    title: this.activeVoucherCode === 'KENYANG2' ? 'Hemat Rp 15.000 Kenyang' : 'Diskon 20% Kopi Susu',
+                    discount: evalResult.discountAmount,
+                    type: this.activeVoucherCode === 'KENYANG2' ? 'FLAT' : 'PERCENT',
+                    value: evalResult.discountAmount
+                };
+            } else {
+                this.appliedVoucher = null;
+            }
+
             this.save();
         },
 
@@ -504,8 +592,17 @@ document.addEventListener('alpine:init', () => {
             return this.appliedVoucher ? (this.appliedVoucher.discount || 0) : 0;
         },
 
+        // --- FR-207: Dynamic Delivery Zone Calculation ---
+        // Radius < 3 km (Rp 8.000), 3-6 km (Rp 12.000), 6-10 km (Rp 18.000), Gratis Ongkir > Rp 150.000
         getDeliveryFee() {
-            return this.orderType === 'delivery' ? 10000 : 0;
+            if (this.orderType !== 'delivery') return 0;
+            const subtotal = this.getSubtotal();
+            if (subtotal > 150000) return 0; // Free delivery threshold
+
+            const zone = this.customer.deliveryZone || 'near';
+            if (zone === 'far') return 18000;
+            if (zone === 'medium') return 12000;
+            return 8000;
         },
 
         getGrandTotal() {
@@ -549,6 +646,7 @@ document.addEventListener('alpine:init', () => {
                 table_number: this.customer.table || this.customer.table_number || '',
                 pickup_time: this.customer.pickupTime || this.customer.pickup_time || '',
                 delivery_address: this.customer.address.trim(),
+                delivery_zone: this.customer.deliveryZone || 'near',
                 delivery_fee: this.getDeliveryFee(),
                 voucher_code: this.appliedVoucher ? this.appliedVoucher.code : '',
                 voucher_discount: this.getDiscount(),
@@ -574,6 +672,13 @@ document.addEventListener('alpine:init', () => {
                     this.qrisModal.status = 'PENDING';
                     this.qrisModal.countdown = 900;
                     this.qrisModal.isOpen = true;
+                    
+                    // Persist active order for Header Shortcut (FR-204)
+                    this.activeOrderToken = res.order_token;
+                    this.activeOrderId = res.order_id;
+                    localStorage.setItem('fnb_active_order_token', res.order_token);
+                    localStorage.setItem('fnb_active_order_id', res.order_id);
+
                     this.closeDrawer();
 
                     // Start 15-minute countdown timer
@@ -639,7 +744,7 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // --- FR-07: Dual Checkout - WhatsApp Branch Order ---
+        // --- FR-07 & UAT-206: Dual Checkout - WhatsApp Branch Order ---
         sendWhatsAppOrder(fallbackNumber, siteName = 'Kopi & Rasa Nusantara') {
             if (this.items.length === 0) {
                 alert('Keranjang belanja Anda masih kosong.');
@@ -675,7 +780,8 @@ document.addEventListener('alpine:init', () => {
                     alert('Silakan masukkan alamat lengkap pengantaran.');
                     return;
                 }
-                detailsText = `- Nama: ${this.customer.name.trim()}\n- Alamat Antar: ${this.customer.address.trim()}`;
+                const zoneLabel = this.customer.deliveryZone === 'far' ? 'Radius 6–10 km' : (this.customer.deliveryZone === 'medium' ? 'Radius 3–6 km' : 'Radius < 3 km');
+                detailsText = `- Nama: ${this.customer.name.trim()}\n- Alamat Antar: ${this.customer.address.trim()}\n- Zona Jarak: ${zoneLabel}`;
                 if (this.customer.phone.trim()) {
                     detailsText += `\n- No WhatsApp: ${this.customer.phone.trim()}`;
                 }
@@ -700,7 +806,7 @@ document.addEventListener('alpine:init', () => {
 
             const subtotalText = this.formatRupiah(this.getSubtotal());
             const discountText = this.getDiscount() > 0 ? `\n*DISKON VOUCHER (${this.appliedVoucher.code}): -${this.formatRupiah(this.getDiscount())}*` : '';
-            const deliveryText = this.getDeliveryFee() > 0 ? `\n*ONGKOS KIRIM: ${this.formatRupiah(this.getDeliveryFee())}*` : '';
+            const deliveryText = this.getDeliveryFee() > 0 ? `\n*ONGKOS KIRIM: ${this.formatRupiah(this.getDeliveryFee())}*` : (this.orderType === 'delivery' ? '\n*ONGKOS KIRIM: GRATIS (Promo Belanja > Rp 150rb)*' : '');
             const totalText = this.formatRupiah(this.getGrandTotal());
 
             const branchName = this.activeOutlet ? this.activeOutlet.name : siteName;
@@ -729,12 +835,12 @@ Mohon konfirmasi ketersediaan pesanan dan rincian pembayarannya. Terima kasih!`;
                 cleanPhone = '62' + cleanPhone.substring(1);
             }
 
-            const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+            const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
             window.open(waUrl, '_blank');
         }
     });
 
-    // --- FR-09: Franchise ROI Simulator Component 2.0 ---
+    // --- FR-09: Franchise ROI Simulator Component 2.0 / 2.1 ---
     Alpine.data('roiCalculator', () => ({
         dailyCups: 85,
         avgPricePerItem: 22000,
@@ -807,7 +913,7 @@ Saya tertarik bermitra dan telah melakukan simulasi perhitungan ROI di website:
 
 Mohon informasi ketersediaan slot kota, proposal kemitraan resmi, dan jadwal diskusi lanjutan. Terima kasih!`;
 
-            let cleanPhone = String(whatsappFranchiseNumber).replace(/[^0-9]/g, '');
+            let cleanPhone = String(whatsappFranchiseNumber || '6281288882026').replace(/[^0-9]/g, '');
             if (cleanPhone.startsWith('0')) {
                 cleanPhone = '62' + cleanPhone.substring(1);
             }

@@ -129,7 +129,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                             class="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 text-slate-800 font-bold text-sm sm:text-base shadow-sm hover:shadow transition-all text-center flex items-center justify-center gap-2"
                         >
                             <?= icon('trending-up', 'w-4 h-4 text-emerald-600') ?>
-                            <span>Peluang Franchise & ROI 2.0</span>
+                            <span>Peluang Franchise & ROI 2.1</span>
                         </a>
                     </div>
 
@@ -313,17 +313,17 @@ require dirname(__DIR__) . '/layouts/header.php';
                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         >
 
-                        <!-- Sold Out Badge -->
-                        <template x-if="item.is_available === 0">
-                            <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] flex items-center justify-center">
-                                <span class="bg-rose-600 text-white text-xs font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-lg">
-                                    Habis / Sold Out
+                        <!-- Sold Out Badge (Branch-isolated & Global Stock, FR-205, UAT-205) -->
+                        <template x-if="item.is_available === 0 || !$store.cart.isMenuAvailable(item.id)">
+                            <div class="absolute inset-0 bg-slate-950/65 backdrop-blur-[2px] flex items-center justify-center p-3 text-center">
+                                <span class="bg-rose-600 text-white text-xs font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-lg"
+                                      x-text="item.is_available === 0 ? 'Habis / Sold Out' : 'Habis di ' + ($store.cart.activeOutlet?.city || 'Cabang Ini')">
                                 </span>
                             </div>
                         </template>
 
                         <!-- Discount / Promo Badge -->
-                        <template x-if="item.is_available === 1 && item.strike_price && item.strike_price > item.price">
+                        <template x-if="(item.is_available === 1 && $store.cart.isMenuAvailable(item.id)) && item.strike_price && item.strike_price > item.price">
                             <span 
                                 class="absolute top-3 left-3 bg-rose-500 text-white text-[11px] font-black px-2.5 py-1 rounded-lg shadow-md"
                                 x-text="'-' + Math.round(((item.strike_price - item.price) / item.strike_price) * 100) + '%'"
@@ -331,7 +331,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                         </template>
 
                         <!-- Featured Badge -->
-                        <template x-if="item.is_available === 1 && item.is_featured === 1">
+                        <template x-if="(item.is_available === 1 && $store.cart.isMenuAvailable(item.id)) && item.is_featured === 1">
                             <span class="absolute top-3 right-3 bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm">
                                 <span class="inline-flex items-center gap-1"><?= icon('star', 'w-3 h-3 fill-slate-900') ?> Favorit</span>
                             </span>
@@ -362,13 +362,20 @@ require dirname(__DIR__) . '/layouts/header.php';
 
                             <button 
                                 type="button" 
-                                :disabled="item.is_available === 0"
+                                :disabled="item.is_available === 0 || !$store.cart.isMenuAvailable(item.id)"
                                 @click.stop="$store.cart.openVariantModal(item)"
                                 class="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
-                                :class="item.is_available === 1 ? 'bg-primary hover:bg-primary/90 text-white shadow-primary/20 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'"
+                                :class="(item.is_available === 1 && $store.cart.isMenuAvailable(item.id)) ? 'bg-primary hover:bg-primary/90 text-white shadow-primary/20 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'"
                             >
-                                <?= icon('plus', 'w-3.5 h-3.5') ?>
-                                <span>Pesan</span>
+                                <template x-if="item.is_available === 1 && $store.cart.isMenuAvailable(item.id)">
+                                    <span class="inline-flex items-center gap-1">
+                                        <?= icon('plus', 'w-3.5 h-3.5') ?>
+                                        <span>Pesan</span>
+                                    </span>
+                                </template>
+                                <template x-if="item.is_available === 0 || !$store.cart.isMenuAvailable(item.id)">
+                                    <span>Habis</span>
+                                </template>
                             </button>
                         </div>
                     </div>
@@ -380,7 +387,7 @@ require dirname(__DIR__) . '/layouts/header.php';
     <!-- =================================================================== -->
     <!-- 4. FRANCHISE ACQUISITION & ROI 2.0 (FR-09, TR-09)                   -->
     <!-- =================================================================== -->
-    <section id="franchise" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="franchise" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         <div class="bg-slate-900 rounded-3xl p-6 sm:p-12 text-white shadow-2xl relative overflow-hidden" x-data="roiCalculator">
             <div class="max-w-3xl mx-auto text-center space-y-3 mb-10">
                 <span class="text-xs font-extrabold text-amber-400 uppercase tracking-wider block">Peluang Investasi F&B 2026</span>
@@ -624,13 +631,112 @@ require dirname(__DIR__) . '/layouts/header.php';
                 <!-- CTA Button to WhatsApp Business Development -->
                 <div class="pt-4 text-center">
                     <a 
-                        :href="generateFranchiseWhatsAppUrl('<?= e($settings['whatsapp_franchise_number'] ?? '6281298765432') ?>')"
+                        :href="generateFranchiseWhatsAppUrl('<?= e($settings['whatsapp_franchise_number'] ?? '6281288882026') ?>')"
                         target="_blank"
                         class="inline-flex items-center justify-center gap-3 w-full sm:w-auto px-8 py-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm sm:text-base shadow-xl shadow-amber-400/20 transition-all hover:scale-105 active:scale-95"
                     >
                         <?= icon('whatsapp', 'w-5 h-5') ?>
                         <span>Konsultasikan Slot Kemitraan via WhatsApp</span>
                     </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Galeri Foto Fisik Gerai & Standar Desain Outlet (FR-208, UAT-210) -->
+        <div class="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-sm">
+            <div class="text-center max-w-2xl mx-auto space-y-2 mb-8">
+                <span class="text-xs font-extrabold text-primary uppercase tracking-wider block">Standar Fisik Gerai & Interior</span>
+                <h3 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    Galeri Foto Fisik Gerai & Standar Desain Outlet
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500">
+                    Standar desain arsitektur modular, higienis, dan instagramable yang disesuaikan dengan tipe kemitraan dan karakteristik lokasi.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Senopati Flagship -->
+                <div class="group rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 transition hover:shadow-lg">
+                    <div class="aspect-[4/3] overflow-hidden bg-slate-200 relative">
+                        <img 
+                            src="/assets/images/outlet-senopati.webp" 
+                            alt="Senopati Flagship Bistro Jakarta Selatan" 
+                            class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                            loading="lazy"
+                        >
+                        <span class="absolute top-3 left-3 bg-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-md shadow uppercase tracking-wider">
+                            Flagship Bistro
+                        </span>
+                    </div>
+                    <div class="p-5 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold text-slate-900 text-base">Senopati Flagship Bistro</h4>
+                            <span class="text-xs text-slate-400 font-semibold">Jakarta Selatan</span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Flagship Store 2 Lantai dengan Open Roastery & VIP Dining Space. Kapasitas 85+ pax dengan fasilitas live brewing bar.
+                        </p>
+                        <div class="pt-2 flex items-center gap-2 text-[11px] font-bold text-primary">
+                            <?= icon('map-pin', 'w-3.5 h-3.5') ?>
+                            <span>Jl. Senopati No. 45, Kebayoran Baru</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Braga Heritage -->
+                <div class="group rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 transition hover:shadow-lg">
+                    <div class="aspect-[4/3] overflow-hidden bg-slate-200 relative">
+                        <img 
+                            src="/assets/images/outlet-braga.webp" 
+                            alt="Braga Heritage Bandung" 
+                            class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                            loading="lazy"
+                        >
+                        <span class="absolute top-3 left-3 bg-primary text-white font-black text-[10px] px-2.5 py-1 rounded-md shadow uppercase tracking-wider">
+                            Coffee Shop Standard
+                        </span>
+                    </div>
+                    <div class="p-5 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold text-slate-900 text-base">Braga Heritage Bandung</h4>
+                            <span class="text-xs text-slate-400 font-semibold">Bandung Kota</span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Konsep Kolonial Art Deco & Communal Space dengan semi-outdoor patio. Destinasi favorit wisatawan dan komunitas kreatif.
+                        </p>
+                        <div class="pt-2 flex items-center gap-2 text-[11px] font-bold text-primary">
+                            <?= icon('map-pin', 'w-3.5 h-3.5') ?>
+                            <span>Jl. Braga No. 108, Sumur Bandung</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Malioboro Express -->
+                <div class="group rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 transition hover:shadow-lg">
+                    <div class="aspect-[4/3] overflow-hidden bg-slate-200 relative">
+                        <img 
+                            src="/assets/images/outlet-malioboro.webp" 
+                            alt="Malioboro Booth Express Yogyakarta" 
+                            class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                            loading="lazy"
+                        >
+                        <span class="absolute top-3 left-3 bg-emerald-600 text-white font-black text-[10px] px-2.5 py-1 rounded-md shadow uppercase tracking-wider">
+                            Booth Express
+                        </span>
+                    </div>
+                    <div class="p-5 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold text-slate-900 text-base">Malioboro Booth Express</h4>
+                            <span class="text-xs text-slate-400 font-semibold">D.I. Yogyakarta</span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Compact Booth Express & Grab-and-Go high foot-traffic zone. Efisiensi operasional tinggi dengan turnaround time &lt; 90 detik.
+                        </p>
+                        <div class="pt-2 flex items-center gap-2 text-[11px] font-bold text-primary">
+                            <?= icon('map-pin', 'w-3.5 h-3.5') ?>
+                            <span>Kawasan Malioboro No. 22, Danurejan</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

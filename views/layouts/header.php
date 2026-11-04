@@ -152,9 +152,12 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
                             <?= icon('coffee', 'w-6 h-6 text-white') ?>
                         </div>
                         <div>
-                            <span class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-primary transition-colors block leading-tight">
-                                <?= e($settings['site_name'] ?? 'Kopi & Rasa') ?>
-                            </span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-primary transition-colors block leading-tight">
+                                    <?= e($settings['site_name'] ?? 'Kopi & Rasa') ?>
+                                </span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950 shadow-sm uppercase tracking-wider">v2.1</span>
+                            </div>
                             <span class="text-[10px] sm:text-[11px] font-medium text-slate-500 tracking-wider uppercase block">
                                 Warisan Rasa Otentik
                             </span>
@@ -217,6 +220,19 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
 
                 <!-- Action Button & WhatsApp Cart Trigger -->
                 <div class="flex items-center gap-3">
+                    <!-- Live Order Tracker Header Shortcut (FR-204) -->
+                    <template x-if="$store.cart.activeOrderToken">
+                        <a 
+                            :href="'/order/' + $store.cart.activeOrderToken" 
+                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-300 text-xs font-bold hover:bg-emerald-100 transition shadow-sm animate-pulse"
+                            title="Lacak Pesanan Aktif Anda"
+                        >
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span class="hidden sm:inline">Lacak Pesanan Aktif</span>
+                            <span class="sm:hidden">Pesanan</span>
+                        </a>
+                    </template>
+
                     <!-- Cart Navbar Button -->
                     <button 
                         @click="$store.cart.toggleDrawer()"

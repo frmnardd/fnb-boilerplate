@@ -270,29 +270,36 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
                         </button>
                     </div>
 
-                    <!-- Voucher Applied Badge -->
-                    <template x-if="$store.cart.appliedVoucher">
-                        <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between text-xs">
-                            <div class="flex items-center gap-1.5">
-                                <?= icon('check-circle', 'w-4 h-4 text-emerald-600 shrink-0') ?>
+                    <!-- Reactive Voucher Alert Banner (FR-202, BUG-202, UAT-202, UAT-203) -->
+                    <template x-if="$store.cart.voucherStatus && $store.cart.voucherStatus.message">
+                        <div 
+                            class="p-2.5 rounded-xl border text-xs flex items-center justify-between transition-all"
+                            :class="$store.cart.voucherStatus.statusType === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-700'"
+                        >
+                            <div class="flex items-start gap-2">
+                                <span class="shrink-0 mt-0.5">
+                                    <template x-if="$store.cart.voucherStatus.statusType === 'success'">
+                                        <?= icon('check-circle', 'w-4 h-4 text-emerald-600') ?>
+                                    </template>
+                                    <template x-if="$store.cart.voucherStatus.statusType === 'error'">
+                                        <?= icon('alert-circle', 'w-4 h-4 text-rose-600') ?>
+                                    </template>
+                                </span>
                                 <div>
-                                    <strong x-text="$store.cart.appliedVoucher.code"></strong>
-                                    <span class="text-[11px] text-emerald-700 block" x-text="$store.cart.appliedVoucher.title"></span>
+                                    <strong class="block uppercase font-bold" x-text="$store.cart.activeVoucherCode"></strong>
+                                    <span class="text-[11px] block leading-tight" x-text="$store.cart.voucherStatus.message"></span>
                                 </div>
                             </div>
                             <button 
                                 type="button" 
                                 @click="$store.cart.removeVoucher()" 
-                                class="text-rose-500 hover:text-rose-700 text-xs font-bold"
+                                class="text-xs font-bold shrink-0 ml-2"
+                                :class="$store.cart.voucherStatus.statusType === 'success' ? 'text-emerald-700 hover:text-emerald-900' : 'text-rose-600 hover:text-rose-800'"
                             >
-                                Batal
+                                Hapus
                             </button>
                         </div>
                     </template>
-
-                    <!-- Error & Success Messages -->
-                    <p x-show="$store.cart.voucherError" x-text="$store.cart.voucherError" class="text-[11px] text-rose-600 font-semibold"></p>
-                    <p x-show="$store.cart.voucherSuccess && !$store.cart.appliedVoucher" x-text="$store.cart.voucherSuccess" class="text-[11px] text-emerald-600 font-semibold"></p>
                 </div>
 
                 <!-- Order Type & Customer Details Form (FR-05) -->
@@ -367,8 +374,48 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
                             >
                         </div>
 
-                        <!-- Delivery Address, Map Note & Phone (Delivery) -->
+                        <!-- Delivery Address, Delivery Zone, Map Note & Phone (Delivery) -->
                         <div x-show="$store.cart.orderType === 'delivery'" class="space-y-3">
+                            <!-- Zona Jarak Pengantaran (FR-207, UAT-207) -->
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Zona Jarak Pengantaran *</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button 
+                                        type="button"
+                                        @click="$store.cart.customer.deliveryZone = 'near'"
+                                        :class="$store.cart.customer.deliveryZone === 'near' ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm' : 'border-slate-200 text-slate-600 hover:border-slate-300'"
+                                        class="p-2 rounded-xl border text-center transition flex flex-col items-center"
+                                    >
+                                        <span class="text-[11px] font-bold">&lt; 3 km</span>
+                                        <span class="text-[10px]" :class="$store.cart.getSubtotal() > 150000 ? 'line-through text-slate-400' : 'text-slate-500'">Rp 8.000</span>
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        @click="$store.cart.customer.deliveryZone = 'medium'"
+                                        :class="$store.cart.customer.deliveryZone === 'medium' ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm' : 'border-slate-200 text-slate-600 hover:border-slate-300'"
+                                        class="p-2 rounded-xl border text-center transition flex flex-col items-center"
+                                    >
+                                        <span class="text-[11px] font-bold">3–6 km</span>
+                                        <span class="text-[10px]" :class="$store.cart.getSubtotal() > 150000 ? 'line-through text-slate-400' : 'text-slate-500'">Rp 12.000</span>
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        @click="$store.cart.customer.deliveryZone = 'far'"
+                                        :class="$store.cart.customer.deliveryZone === 'far' ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm' : 'border-slate-200 text-slate-600 hover:border-slate-300'"
+                                        class="p-2 rounded-xl border text-center transition flex flex-col items-center"
+                                    >
+                                        <span class="text-[11px] font-bold">6–10 km</span>
+                                        <span class="text-[10px]" :class="$store.cart.getSubtotal() > 150000 ? 'line-through text-slate-400' : 'text-slate-500'">Rp 18.000</span>
+                                    </button>
+                                </div>
+                                <template x-if="$store.cart.getSubtotal() > 150000">
+                                    <p class="text-[10px] font-bold text-emerald-600 mt-1.5 flex items-center gap-1">
+                                        <?= icon('check-circle', 'w-3 h-3 text-emerald-600') ?>
+                                        <span>Gratis Ongkir Otomatis (Belanja di atas Rp 150.000)</span>
+                                    </p>
+                                </template>
+                            </div>
+
                             <div>
                                 <label class="block text-xs font-semibold text-slate-700 mb-1">Alamat Lengkap Pengantaran *</label>
                                 <textarea 
@@ -423,11 +470,14 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
                         </div>
                     </template>
 
-                    <!-- Delivery Fee Row -->
+                    <!-- Delivery Fee Row (FR-207, UAT-207) -->
                     <template x-if="$store.cart.orderType === 'delivery'">
                         <div class="flex justify-between text-slate-600">
-                            <span>Ongkos Kirim (Flat Cabang):</span>
-                            <span class="font-bold" x-text="$store.cart.formatRupiah($store.cart.getDeliveryFee())"></span>
+                            <span class="flex items-center gap-1">
+                                <span>Ongkos Kirim:</span>
+                                <span class="text-[10px] text-slate-400" x-text="'(' + ($store.cart.customer.deliveryZone === 'far' ? 'Radius 6–10 km' : ($store.cart.customer.deliveryZone === 'medium' ? 'Radius 3–6 km' : 'Radius < 3 km')) + ')'"></span>
+                            </span>
+                            <span class="font-bold" :class="$store.cart.getDeliveryFee() === 0 ? 'text-emerald-600' : 'text-slate-900'" x-text="$store.cart.getDeliveryFee() === 0 ? 'GRATIS' : $store.cart.formatRupiah($store.cart.getDeliveryFee())"></span>
                         </div>
                     </template>
 

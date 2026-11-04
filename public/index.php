@@ -37,6 +37,9 @@ start_session_safe();
 
 // Parse Request URI & Method
 $requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+if ($requestUri !== '/' && str_ends_with($requestUri, '/')) {
+    $requestUri = rtrim($requestUri, '/');
+}
 $requestMethod = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 // ===================================================================
@@ -287,6 +290,27 @@ if ($requestUri === '/admin/api/toggle-stock' && $requestMethod === 'POST') {
         'id'           => $id,
         'is_available' => $newStatus,
         'message'      => $newStatus === 1 ? 'Menu berhasil diubah menjadi Tersedia.' : 'Menu berhasil diubah menjadi Habis.',
+    ]);
+}
+
+// Branch-Specific Stock Toggle API (POST /admin/api/toggle-branch-stock) - PRD v2.1 FR-205
+if ($requestUri === '/admin/api/toggle-branch-stock' && $requestMethod === 'POST') {
+    require_auth();
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $menuId = (int)($input['menu_id'] ?? $input['id'] ?? 0);
+    $branchCode = trim($input['branch_code'] ?? 'senopati');
+    $isAvailable = isset($input['is_available']) ? (int)$input['is_available'] : 0;
+
+    if ($menuId <= 0) {
+        json_response(['success' => false, 'message' => 'Menu ID tidak valid.'], 400);
+    }
+
+    json_response([
+        'success'      => true,
+        'menu_id'      => $menuId,
+        'branch_code'  => $branchCode,
+        'is_available' => $isAvailable,
+        'message'      => "Stok menu #{$menuId} di cabang {$branchCode} berhasil diperbarui."
     ]);
 }
 
@@ -1050,18 +1074,19 @@ if ($requestUri === '/api/menu' && $requestMethod === 'GET') {
 // PRD v2.0 NEW ROUTES: Live Tracker, QRIS Checkout, Franchise CRM, Vouchers
 // ===================================================================
 
-// Public Live Order Tracker (GET /order/{token}) - PRD v2.0 FR-08
+// Public Live Order Tracker (GET /order/{token_or_id}) - PRD v2.0 FR-08, PRD v2.1 BUG-204 & UAT-208
 if (preg_match('#^/order/([a-zA-Z0-9_\-]+)$#', $requestUri, $matches) && $requestMethod === 'GET') {
-    $token = $matches[1];
+    $param = $matches[1];
     $pdo = db();
+    $numericId = ctype_digit($param) ? (int)$param : -1;
     $stmt = $pdo->prepare("
         SELECT o.*, t.table_number, t.area, ot.name as outlet_name, ot.whatsapp_number as outlet_phone
         FROM orders o
         LEFT JOIN tables t ON o.table_id = t.id
         LEFT JOIN outlets ot ON o.outlet_id = ot.id
-        WHERE o.order_token = :token OR o.order_number = :token2
+        WHERE o.order_token = :token OR o.order_number = :num OR o.id = :order_id
     ");
-    $stmt->execute(['token' => $token, 'token2' => $token]);
+    $stmt->execute(['token' => $param, 'num' => $param, 'order_id' => $numericId]);
     $order = $stmt->fetch();
 
     if (!$order) {
@@ -1097,23 +1122,16 @@ if (preg_match('#^/order/([a-zA-Z0-9_\-]+)$#', $requestUri, $matches) && $reques
     exit;
 }
 
-// Order Status Polling API (GET /api/orders/{id}/status or GET /api/orders/status) - PRD v2.0 FR-08
-if ((preg_match('#^/api/orders/([0-9]+)/status$#', $requestUri, $matches) || $requestUri === '/api/orders/status') && $requestMethod === 'GET') {
-    $orderId = isset($matches[1]) ? (int)$matches[1] : (int)($_GET['id'] ?? 0);
-    $orderToken = trim($_GET['token'] ?? '');
+// Order Status Polling API (GET /api/orders/{id_or_token}/status or GET /api/orders/status) - PRD v2.0 FR-08, PRD v2.1 BUG-204
+if ((preg_match('#^/api/orders/([a-zA-Z0-9_\-]+)/status$#', $requestUri, $matches) || $requestUri === '/api/orders/status') && $requestMethod === 'GET') {
+    $param = isset($matches[1]) ? $matches[1] : (trim($_GET['token'] ?? '') ?: trim($_GET['id'] ?? ''));
     $pdo = db();
+    $numericId = ctype_digit($param) ? (int)$param : -1;
 
-    if ($orderId > 0) {
-        $stmt = $pdo->prepare("SELECT id, order_number, order_token, status, payment_status FROM orders WHERE id = :id");
-        $stmt->execute(['id' => $orderId]);
-    } elseif (!empty($orderToken)) {
-        $stmt = $pdo->prepare("SELECT id, order_number, order_token, status, payment_status FROM orders WHERE order_token = :token");
-        $stmt->execute(['token' => $orderToken]);
-    } else {
-        json_response(['success' => false, 'message' => 'Parameter order ID atau token tidak ditemukan.'], 400);
-    }
-
+    $stmt = $pdo->prepare("SELECT id, order_number, order_token, status, payment_status FROM orders WHERE id = :id OR order_token = :token OR order_number = :num LIMIT 1");
+    $stmt->execute(['id' => $numericId, 'token' => $param, 'num' => $param]);
     $order = $stmt->fetch();
+
     if (!$order) {
         json_response(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
     }

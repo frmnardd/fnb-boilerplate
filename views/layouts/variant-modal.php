@@ -60,6 +60,38 @@ declare(strict_types=1);
                         </div>
                     </div>
 
+                    <!-- Product Metadata Bar: Halal, Rating, Calories, Main Ingredients (FR-206, UAT-204) -->
+                    <div class="px-6 py-3.5 bg-slate-50 border-b border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                        <div class="flex items-center gap-1.5">
+                            <img src="/assets/images/halal-badge.svg" class="w-4 h-4 shrink-0" alt="Halal">
+                            <div>
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block leading-tight">Sertifikasi</span>
+                                <span class="text-[10px] font-bold text-emerald-700 block leading-tight" title="ID31110001234560723">ID31110001234560723</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-amber-500 shrink-0"><?= icon('star', 'w-4 h-4') ?></span>
+                            <div>
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block leading-tight">Rating</span>
+                                <span class="text-[11px] font-bold text-slate-800 block leading-tight" x-text="($store.cart.variantModal.menu?.rating || '4.9') + '/5.0'"></span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-rose-500 shrink-0"><?= icon('flame', 'w-4 h-4') ?></span>
+                            <div>
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block leading-tight">Estimasi Kalori</span>
+                                <span class="text-[11px] font-bold text-slate-800 block leading-tight" x-text="($store.cart.variantModal.menu?.calories ? $store.cart.variantModal.menu.calories + ' kkal' : '~180 kkal')"></span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 truncate">
+                            <span class="text-primary shrink-0"><?= icon('utensils', 'w-4 h-4') ?></span>
+                            <div class="truncate">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block leading-tight">Bahan Utama</span>
+                                <span class="text-[11px] font-semibold text-slate-700 block leading-tight truncate" :title="$store.cart.variantModal.menu?.ingredients_text || 'Bahan Pilihan Segar'" x-text="$store.cart.variantModal.menu?.ingredients_text || 'Bahan Pilihan Alami'"></span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Dynamic Modifier Groups List -->
                     <div class="p-6 max-h-[60vh] overflow-y-auto space-y-6">
                         <template x-if="$store.cart.variantModal.menu.parsedVariants && $store.cart.variantModal.menu.parsedVariants.options">
