@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 /**
- * FnB Boilerplate - Master Header Layout
- * Dynamic Theme Engine (CSS Variables), Pixel Scripts & Responsive Navigation.
+ * FnB Boilerplate - Master Header Layout (PRD v2.0)
+ * Dynamic Theme Engine (CSS Variables), Pixel Scripts & Multi-Outlet Selector.
  * Professional Edition: 100% Emoji-Free. Powered by Lucide SVG Icons.
  */
 
@@ -18,6 +18,36 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($settings['site_name'] ?? 'FnB Boilerplate') ?> - <?= e($settings['tagline'] ?? '') ?></title>
+
+    <!-- SEO Meta Tags & Local Restaurant Schema -->
+    <meta name="description" content="Pesan kopi lokal Nusantara, aneka kuliner otentik & camilan tradisional secara mandiri tanpa komisi di Kopi & Rasa Nusantara. Cabang Senopati, Braga, & Malioboro.">
+    <meta name="keywords" content="kopi nusantara, kopi susu gula aren, nasi goreng kampung, ayam bakar taliwang, franchise kopi, fnb self order">
+
+    <!-- Schema.org JSON-LD Local Restaurant & Menu (NFR PRD v2.0) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Restaurant",
+      "name": "<?= e($settings['site_name'] ?? 'Kopi & Rasa Nusantara') ?>",
+      "image": "https://fnbtech.biz.id/assets/images/hero-banner.png",
+      "telephone": "+6281211112222",
+      "servesCuisine": "Indonesian",
+      "priceRange": "$$",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Jl. Senopati No. 45, Kebayoran Baru",
+        "addressLocality": "Jakarta Selatan",
+        "addressRegion": "DKI Jakarta",
+        "postalCode": "12190",
+        "addressCountry": "ID"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "reviewCount": "342"
+      }
+    }
+    </script>
 
     <!-- Favicon -->
     <link rel="shortcut icon" href="<?= e($settings['favicon_url'] ?? '/assets/images/favicon.svg') ?>" type="image/svg+xml">
@@ -111,24 +141,60 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
     </aside>
     <?php endif; ?>
 
-    <!-- 2. Sticky Navbar -->
+    <!-- 2. Sticky Navbar with Multi-Outlet Selector (FR-05) -->
     <header class="bg-white/95 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 transition-all">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-20">
                 <!-- Brand Logo & Title -->
-                <a href="/" class="flex items-center gap-3 group">
-                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
-                        <?= icon('utensils', 'w-6 h-6 text-white') ?>
+                <div class="flex items-center gap-3">
+                    <a href="/" class="flex items-center gap-3 group">
+                        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
+                            <?= icon('coffee', 'w-6 h-6 text-white') ?>
+                        </div>
+                        <div>
+                            <span class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-primary transition-colors block leading-tight">
+                                <?= e($settings['site_name'] ?? 'Kopi & Rasa') ?>
+                            </span>
+                            <span class="text-[10px] sm:text-[11px] font-medium text-slate-500 tracking-wider uppercase block">
+                                Warisan Rasa Otentik
+                            </span>
+                        </div>
+                    </a>
+
+                    <!-- Active Branch Pill on Navbar (FR-05) -->
+                    <div class="hidden xl:flex items-center ml-4 pl-4 border-l border-slate-200" x-data="{ open: false }">
+                        <div class="relative">
+                            <button 
+                                @click="open = !open" 
+                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-xs text-slate-800 font-bold transition"
+                            >
+                                <?= icon('map-pin', 'w-3.5 h-3.5 text-primary') ?>
+                                <span x-text="$store.cart.activeOutlet ? $store.cart.activeOutlet.city : 'Pilih Cabang'"></span>
+                                <?= icon('chevron-down', 'w-3 h-3 text-slate-400') ?>
+                            </button>
+                            <div 
+                                x-show="open" 
+                                @click.away="open = false" 
+                                x-cloak 
+                                class="absolute left-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-2 space-y-1"
+                            >
+                                <span class="text-[10px] font-bold text-slate-400 px-2 block uppercase">Pilih Cabang Terdekat:</span>
+                                <template x-for="outl in $store.cart.outlets" :key="outl.id">
+                                    <button 
+                                        @click="$store.cart.setActiveOutlet(outl.slug); open = false;"
+                                        class="w-full text-left p-2 rounded-xl hover:bg-slate-50 transition flex items-start gap-2 text-xs"
+                                        :class="$store.cart.activeOutlet?.id === outl.id ? 'bg-primary/10 text-primary font-bold' : 'text-slate-700'"
+                                    >
+                                        <div>
+                                            <span class="block font-bold" x-text="outl.name"></span>
+                                            <span class="text-[10px] text-slate-400 block" x-text="outl.city"></span>
+                                        </div>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <span class="text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-primary transition-colors block leading-tight">
-                            <?= e($settings['site_name'] ?? 'Kopi & Rasa') ?>
-                        </span>
-                        <span class="text-[11px] font-medium text-slate-500 tracking-wider uppercase block">
-                            Warisan Rasa Otentik
-                        </span>
-                    </div>
-                </a>
+                </div>
 
                 <!-- Desktop Navigation Links -->
                 <nav class="hidden md:flex items-center space-x-1 lg:space-x-2">
@@ -192,6 +258,19 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
             @click.away="mobileMenu = false"
             class="md:hidden border-t border-slate-100 bg-white/95 px-4 pt-3 pb-6 space-y-2 shadow-xl"
         >
+            <!-- Mobile Branch Selector -->
+            <div class="pb-2 border-b border-slate-100">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Cabang Aktif:</span>
+                <select 
+                    @change="$store.cart.setActiveOutlet($event.target.value)" 
+                    class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-primary"
+                >
+                    <template x-for="outl in $store.cart.outlets" :key="outl.id">
+                        <option :value="outl.slug" :selected="$store.cart.activeOutlet?.id === outl.id" x-text="outl.name + ' (' + outl.city + ')'"></option>
+                    </template>
+                </select>
+            </div>
+
             <a @click="mobileMenu = false" href="#home" class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
                 <?= icon('layout-dashboard', 'w-4 h-4 text-slate-500') ?>
                 <span>Beranda</span>
@@ -212,8 +291,12 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
                 <?= icon('map-pin', 'w-4 h-4 text-slate-500') ?>
                 <span>Lokasi Cabang</span>
             </a>
+            <a @click="mobileMenu = false" href="#faq" class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
+                <?= icon('help-circle', 'w-4 h-4 text-slate-500') ?>
+                <span>Tanya Jawab (FAQ)</span>
+            </a>
             <div class="pt-2">
-                <a href="<?= format_whatsapp_url($settings['whatsapp_order_number'] ?? '', 'Halo, saya ingin bertanya tentang menu') ?>" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow hover:bg-emerald-700 transition">
+                <a href="<?= format_whatsapp_url($settings['whatsapp_order_number'] ?? '6281211112222', 'Halo, saya ingin bertanya tentang menu') ?>" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow hover:bg-emerald-700 transition">
                     <?= icon('whatsapp', 'w-4 h-4') ?>
                     <span>Hubungi WhatsApp CS</span>
                 </a>

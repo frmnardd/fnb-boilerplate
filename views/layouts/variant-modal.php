@@ -2,8 +2,9 @@
 declare(strict_types=1);
 
 /**
- * FnB Boilerplate - Menu Variant Customization Modal
- * Allows customers to customize sizes, toppings, sweetness levels & notes before adding to cart.
+ * FnB Boilerplate - Dynamic Menu Variant Customization Modal (PRD v2.0 - FR-03)
+ * Dynamic category modifiers (Coffee vs Food vs Snacks) with instant price recalculation.
+ * 100% Emoji-Free. Powered by Lucide SVG Icons.
  */
 ?>
 <div 
@@ -44,8 +45,8 @@ declare(strict_types=1);
                     <div class="relative bg-slate-900 text-white p-6 pb-5 overflow-hidden">
                         <div class="relative z-10 flex justify-between items-start">
                             <div>
-                                <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-400 text-slate-900 uppercase tracking-wider mb-2">
-                                    Kustomisasi Pilihan
+                                <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400 text-slate-900 uppercase tracking-wider mb-2">
+                                    Kustomisasi Varian
                                 </span>
                                 <h3 class="text-xl font-extrabold tracking-tight" x-text="$store.cart.variantModal.menu.name"></h3>
                                 <p class="text-xs text-slate-300 mt-1 line-clamp-2" x-text="$store.cart.variantModal.menu.description"></p>
@@ -54,23 +55,24 @@ declare(strict_types=1);
                                 @click="$store.cart.closeVariantModal()" 
                                 class="text-slate-400 hover:text-white p-1 rounded-lg bg-white/10 hover:bg-white/20 transition"
                             >
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
+                                <?= icon('x', 'w-5 h-5') ?>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Variant Groups List -->
+                    <!-- Dynamic Modifier Groups List -->
                     <div class="p-6 max-h-[60vh] overflow-y-auto space-y-6">
                         <template x-if="$store.cart.variantModal.menu.parsedVariants && $store.cart.variantModal.menu.parsedVariants.options">
                             <template x-for="(group, gIdx) in $store.cart.variantModal.menu.parsedVariants.options" :key="gIdx">
                                 <div class="space-y-3">
                                     <div class="flex items-center justify-between">
-                                        <h4 class="text-sm font-bold text-slate-900" x-text="group.name"></h4>
-                                        <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Pilih 1</span>
+                                        <h4 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                            <?= icon('check', 'w-3.5 h-3.5 text-primary') ?>
+                                            <span x-text="group.name"></span>
+                                        </h4>
+                                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded">Pilih 1</span>
                                     </div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         <template x-for="(choice, cIdx) in group.choices" :key="cIdx">
                                             <button 
                                                 type="button"
@@ -78,7 +80,7 @@ declare(strict_types=1);
                                                 :class="$store.cart.variantModal.selectedChoices[group.name]?.name === choice.name 
                                                     ? 'border-primary bg-primary/5 text-primary font-bold shadow-sm' 
                                                     : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'"
-                                                class="flex items-center justify-between p-3 rounded-2xl border text-xs transition text-left"
+                                                class="flex items-center justify-between p-3 rounded-xl border text-xs transition text-left"
                                             >
                                                 <span x-text="choice.name"></span>
                                                 <span 
@@ -101,7 +103,7 @@ declare(strict_types=1);
                             <input 
                                 type="text" 
                                 x-model="$store.cart.variantModal.itemNotes" 
-                                placeholder="Contoh: Es sedikit, jangan terlalu manis, sambal dipisah..."
+                                placeholder="Contoh: Takaran es sedikit, sambal dipisah..."
                                 class="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                             >
                         </div>
@@ -136,9 +138,7 @@ declare(strict_types=1);
                             @click="$store.cart.confirmVariantSelection()"
                             class="flex-1 py-3 px-5 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold text-sm shadow-lg shadow-primary/25 transition active:scale-95 flex items-center justify-center gap-2"
                         >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                            </svg>
+                            <?= icon('plus', 'w-4 h-4') ?>
                             <span>Masukkan ke Keranjang</span>
                         </button>
                     </div>

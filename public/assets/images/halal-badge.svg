@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <circle cx="80" cy="80" r="76" fill="#047857" stroke="#10B981" stroke-width="4"/>
+  <circle cx="80" cy="80" r="66" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="4 2"/>
+  <text x="80" y="52" font-family="Arial, sans-serif" font-weight="900" font-size="12" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">INDONESIA</text>
+  <text x="80" y="88" font-family="'Times New Roman', serif" font-weight="bold" font-size="34" fill="#FFFFFF" text-anchor="middle">حلال</text>
+  <text x="80" y="108" font-family="Arial, sans-serif" font-weight="800" font-size="14" fill="#FCD34D" text-anchor="middle" letter-spacing="3">HALAL</text>
+  <text x="80" y="126" font-family="Arial, sans-serif" font-weight="bold" font-size="8" fill="#E2E8F0" text-anchor="middle">ID31110001234560723</text>
+</svg>

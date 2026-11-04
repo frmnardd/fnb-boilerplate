@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * FnB Boilerplate - Master CI/CD & Complete Test Runner
- * Executes all test suites across Phase 1 to Phase 6
+ * Executes all test suites across Phase 1 to Phase 7
  */
 
 $testSuites = [
@@ -13,10 +13,11 @@ $testSuites = [
     'Phase 4: Nginx Production Config & Multi-Client Cloner'      => __DIR__ . '/test_phase4.php',
     'Phase 5: Studio Meja, KDS, Thermal POS & Inventori HPP'     => __DIR__ . '/test_phase5.php',
     'Phase 6: Professional Open-Source Assets, Zero Emoji & API'  => __DIR__ . '/test_phase6.php',
+    'Phase 7: PRD v2.0 Omnichannel & Full Business Upgrade'       => __DIR__ . '/test_phase7_prd_v2.php',
 ];
 
 echo "===================================================================\n";
-echo "   FnB Boilerplate - Full Project Verification (Phase 1 to 6)      \n";
+echo "   FnB Boilerplate - Full Project Verification (Phase 1 to 7)      \n";
 echo "===================================================================\n\n";
 
 $allPassed = true;
@@ -40,7 +41,7 @@ foreach ($testSuites as $name => $path) {
 
 echo "===================================================================\n";
 if ($allPassed) {
-    echo "   HASIL AKHIR: SELURUH FASE 1 HINGGA FASE 6 LULUS 100%! ✓       \n";
+    echo "   HASIL AKHIR: SELURUH FASE 1 HINGGA FASE 7 LULUS 100%! ✓       \n";
     echo "===================================================================\n";
     exit(0);
 } else {

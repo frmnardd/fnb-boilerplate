@@ -185,6 +185,20 @@ try {
                         <span>Cabang Outlet</span>
                     </a>
 
+                    <div class="nav-section">Marketing & Kemitraan</div>
+
+                    <!-- Prospek Franchise CRM -->
+                    <a href="/admin/franchise-leads" class="sidebar-link <?= str_starts_with($currentRoute, '/admin/franchise-leads') ? 'active' : 'inactive' ?>">
+                        <?= icon('trending-up', 'w-4 h-4 shrink-0 text-emerald-400') ?>
+                        <span>Prospek Franchise</span>
+                    </a>
+
+                    <!-- Voucher Promo -->
+                    <a href="/admin/vouchers" class="sidebar-link <?= str_starts_with($currentRoute, '/admin/vouchers') ? 'active' : 'inactive' ?>">
+                        <?= icon('tag', 'w-4 h-4 shrink-0 text-amber-400') ?>
+                        <span>Voucher Promo</span>
+                    </a>
+
                     <?php if (($user['role'] ?? '') === 'admin'): ?>
                     <div class="nav-section">White-Label Brand</div>
 

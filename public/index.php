@@ -1044,6 +1044,405 @@ if ($requestUri === '/api/menu' && $requestMethod === 'GET') {
     ]);
 }
 
+// ===================================================================
+// PRD v2.0 NEW ROUTES: Live Tracker, QRIS Checkout, Franchise CRM, Vouchers
+// ===================================================================
+
+// Public Live Order Tracker (GET /order/{token}) - PRD v2.0 FR-08
+if (preg_match('#^/order/([a-zA-Z0-9_\-]+)$#', $requestUri, $matches) && $requestMethod === 'GET') {
+    $token = $matches[1];
+    $pdo = db();
+    $stmt = $pdo->prepare("
+        SELECT o.*, t.table_number, t.area, ot.name as outlet_name, ot.whatsapp_number as outlet_phone
+        FROM orders o
+        LEFT JOIN tables t ON o.table_id = t.id
+        LEFT JOIN outlets ot ON o.outlet_id = ot.id
+        WHERE o.order_token = :token OR o.order_number = :token2
+    ");
+    $stmt->execute(['token' => $token, 'token2' => $token]);
+    $order = $stmt->fetch();
+
+    if (!$order) {
+        http_response_code(404);
+        ?>
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <title>Pesanan Tidak Ditemukan</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-slate-50 text-slate-800 flex items-center justify-center min-h-screen p-4">
+            <div class="text-center space-y-4 max-w-sm">
+                <div class="flex justify-center text-slate-400"><?= icon('receipt', 'w-16 h-16') ?></div>
+                <h1 class="text-2xl font-black text-slate-900">Pesanan Tidak Ditemukan</h1>
+                <p class="text-xs text-slate-500">Nomor atau tautan pesanan tidak valid atau telah kedaluwarsa.</p>
+                <a href="/" class="inline-block px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs shadow hover:bg-slate-800 transition">
+                    Kembali ke Beranda
+                </a>
+            </div>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
+
+    $itemStmt = $pdo->prepare("SELECT * FROM order_items WHERE order_id = :order_id");
+    $itemStmt->execute(['order_id' => $order['id']]);
+    $items = $itemStmt->fetchAll();
+
+    require dirname(__DIR__) . '/views/frontend/order-tracker.php';
+    exit;
+}
+
+// Order Status Polling API (GET /api/orders/{id}/status or GET /api/orders/status) - PRD v2.0 FR-08
+if ((preg_match('#^/api/orders/([0-9]+)/status$#', $requestUri, $matches) || $requestUri === '/api/orders/status') && $requestMethod === 'GET') {
+    $orderId = isset($matches[1]) ? (int)$matches[1] : (int)($_GET['id'] ?? 0);
+    $orderToken = trim($_GET['token'] ?? '');
+    $pdo = db();
+
+    if ($orderId > 0) {
+        $stmt = $pdo->prepare("SELECT id, order_number, order_token, status, payment_status FROM orders WHERE id = :id");
+        $stmt->execute(['id' => $orderId]);
+    } elseif (!empty($orderToken)) {
+        $stmt = $pdo->prepare("SELECT id, order_number, order_token, status, payment_status FROM orders WHERE order_token = :token");
+        $stmt->execute(['token' => $orderToken]);
+    } else {
+        json_response(['success' => false, 'message' => 'Parameter order ID atau token tidak ditemukan.'], 400);
+    }
+
+    $order = $stmt->fetch();
+    if (!$order) {
+        json_response(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
+    }
+
+    json_response([
+        'success' => true,
+        'order_id' => (int)$order['id'],
+        'order_number' => $order['order_number'],
+        'order_token' => $order['order_token'],
+        'status' => $order['status'],
+        'payment_status' => $order['payment_status'],
+    ]);
+}
+
+// Order Creation API for Instant QRIS & Online Order (POST /api/orders/create) - PRD v2.0 FR-02, FR-04, FR-05, FR-07
+if ($requestUri === '/api/orders/create' && $requestMethod === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+
+    $customerName = trim($input['customer_name'] ?? '');
+    $customerPhone = trim($input['customer_phone'] ?? '');
+    $orderType = strtolower(trim($input['order_type'] ?? 'dine_in'));
+    $outletId = (int)($input['outlet_id'] ?? 1);
+    $tableNumber = trim($input['table_number'] ?? '');
+    $deliveryAddress = trim($input['delivery_address'] ?? '');
+    $deliveryNotes = trim($input['delivery_notes'] ?? '');
+    $paymentMethod = strtoupper(trim($input['payment_method'] ?? 'QRIS'));
+    $voucherCode = strtoupper(trim($input['voucher_code'] ?? ''));
+    $items = $input['items'] ?? [];
+
+    if (empty($customerName)) {
+        json_response(['success' => false, 'message' => 'Nama pemesan wajib diisi.'], 422);
+    }
+
+    if (empty($items) || !is_array($items)) {
+        json_response(['success' => false, 'message' => 'Keranjang pesanan tidak boleh kosong.'], 422);
+    }
+
+    $pdo = db();
+
+    // Resolve outlet name
+    $outStmt = $pdo->prepare("SELECT id, name FROM outlets WHERE id = :id");
+    $outStmt->execute(['id' => $outletId]);
+    $outlet = $outStmt->fetch();
+    $outletName = $outlet['name'] ?? ($input['outlet_name'] ?? 'Cabang Senopati (Flagship Store)');
+
+    // Resolve table_id if table_number is provided
+    $tableId = null;
+    if (!empty($tableNumber)) {
+        $tblStmt = $pdo->prepare("SELECT id FROM tables WHERE table_number = :tn LIMIT 1");
+        $tblStmt->execute(['tn' => $tableNumber]);
+        $tableRow = $tblStmt->fetch();
+        if ($tableRow) {
+            $tableId = (int)$tableRow['id'];
+        }
+    }
+
+    // Calculate subtotal accurately from items (PRD FR-02: Unit Price * Quantity)
+    $subtotal = 0;
+    $processedItems = [];
+    foreach ($items as $item) {
+        $qty = max(1, (int)($item['qty'] ?? $item['quantity'] ?? 1));
+        $unitPrice = (int)($item['unit_price'] ?? $item['calculated_price'] ?? $item['price'] ?? 0);
+        $lineTotal = $unitPrice * $qty;
+        $subtotal += $lineTotal;
+
+        $processedItems[] = [
+            'menu_id' => !empty($item['id']) ? (int)$item['id'] : null,
+            'name' => trim($item['name'] ?? 'Menu Item'),
+            'qty' => $qty,
+            'unit_price' => $unitPrice,
+            'line_total' => $lineTotal,
+            'station' => strtoupper(trim($item['station'] ?? 'KITCHEN')),
+            'notes' => trim($item['itemNotes'] ?? $item['notes'] ?? ''),
+            'variants' => !empty($item['variants']) ? (is_array($item['variants']) ? json_encode($item['variants']) : (string)$item['variants']) : null,
+        ];
+    }
+
+    // Calculate voucher discount (PRD FR-04)
+    $voucherDiscount = 0;
+    if (!empty($voucherCode)) {
+        $vStmt = $pdo->prepare("SELECT * FROM vouchers WHERE code = :code AND is_active = 1");
+        $vStmt->execute(['code' => $voucherCode]);
+        $voucher = $vStmt->fetch();
+
+        if ($voucher) {
+            if ($voucher['code'] === 'KOPIASIK') {
+                $coffeeSubtotal = 0;
+                foreach ($processedItems as $pi) {
+                    $mName = strtolower($pi['name']);
+                    if (str_contains($mName, 'kopi') || str_contains($mName, 'brew') || $pi['station'] === 'BAR') {
+                        $coffeeSubtotal += $pi['line_total'];
+                    }
+                }
+                $voucherDiscount = (int)round($coffeeSubtotal * 0.20);
+            } elseif ($voucher['code'] === 'KENYANG2') {
+                if ($subtotal >= (int)$voucher['min_subtotal']) {
+                    $voucherDiscount = (int)$voucher['discount_value'];
+                }
+            } else {
+                if ($subtotal >= (int)$voucher['min_subtotal']) {
+                    if ($voucher['discount_type'] === 'PERCENT') {
+                        $voucherDiscount = (int)round($subtotal * ((int)$voucher['discount_value'] / 100));
+                    } else {
+                        $voucherDiscount = (int)$voucher['discount_value'];
+                    }
+                }
+            }
+        }
+    }
+    $voucherDiscount = min($voucherDiscount, $subtotal);
+
+    // Delivery fee
+    $deliveryFee = ($orderType === 'delivery') ? 10000 : 0;
+    $grandTotal = max(0, $subtotal - $voucherDiscount + $deliveryFee);
+
+    $orderNumber = 'KRN-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+    $orderToken = bin2hex(random_bytes(16));
+
+    // Insert order record
+    $insStmt = $pdo->prepare("
+        INSERT INTO orders (
+            order_number, order_token, order_type, outlet_id, outlet_name,
+            table_id, table_number, customer_name, customer_phone, status,
+            subtotal, voucher_code, voucher_discount, delivery_address, delivery_notes,
+            delivery_fee, grand_total, payment_method, payment_status, notes
+        ) VALUES (
+            :order_number, :order_token, :order_type, :outlet_id, :outlet_name,
+            :table_id, :table_number, :customer_name, :customer_phone, 'PENDING',
+            :subtotal, :voucher_code, :voucher_discount, :delivery_address, :delivery_notes,
+            :delivery_fee, :grand_total, :payment_method, 'PENDING', :notes
+        )
+    ");
+    $insStmt->execute([
+        'order_number' => $orderNumber,
+        'order_token' => $orderToken,
+        'order_type' => $orderType,
+        'outlet_id' => $outletId,
+        'outlet_name' => $outletName,
+        'table_id' => $tableId,
+        'table_number' => !empty($tableNumber) ? $tableNumber : null,
+        'customer_name' => $customerName,
+        'customer_phone' => $customerPhone,
+        'subtotal' => $subtotal,
+        'voucher_code' => !empty($voucherCode) ? $voucherCode : null,
+        'voucher_discount' => $voucherDiscount,
+        'delivery_address' => !empty($deliveryAddress) ? $deliveryAddress : null,
+        'delivery_notes' => !empty($deliveryNotes) ? $deliveryNotes : null,
+        'delivery_fee' => $deliveryFee,
+        'grand_total' => $grandTotal,
+        'payment_method' => $paymentMethod,
+        'notes' => $input['notes'] ?? null,
+    ]);
+
+    $orderId = (int)$pdo->lastInsertId();
+
+    // Insert order items
+    $itemInsStmt = $pdo->prepare("
+        INSERT INTO order_items (
+            order_id, menu_id, menu_name, quantity, unit_price,
+            line_total, station, item_status, notes, variants_selected
+        ) VALUES (
+            :order_id, :menu_id, :menu_name, :quantity, :unit_price,
+            :line_total, :station, 'QUEUED', :notes, :variants_selected
+        )
+    ");
+
+    foreach ($processedItems as $pItem) {
+        $itemInsStmt->execute([
+            'order_id' => $orderId,
+            'menu_id' => $pItem['menu_id'],
+            'menu_name' => $pItem['name'],
+            'quantity' => $pItem['qty'],
+            'unit_price' => $pItem['unit_price'],
+            'line_total' => $pItem['line_total'],
+            'station' => in_array($pItem['station'], ['KITCHEN', 'BAR']) ? $pItem['station'] : 'KITCHEN',
+            'notes' => !empty($pItem['notes']) ? $pItem['notes'] : null,
+            'variants_selected' => $pItem['variants'],
+        ]);
+    }
+
+    json_response([
+        'success' => true,
+        'order_id' => $orderId,
+        'order_number' => $orderNumber,
+        'order_token' => $orderToken,
+        'subtotal' => $subtotal,
+        'voucher_discount' => $voucherDiscount,
+        'delivery_fee' => $deliveryFee,
+        'grand_total' => $grandTotal,
+    ]);
+}
+
+// Simulate Payment Verification API for Sandbox (POST /api/orders/simulate-pay) - PRD v2.0 FR-07
+if ($requestUri === '/api/orders/simulate-pay' && $requestMethod === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $orderToken = trim($input['order_token'] ?? '');
+    $orderId = (int)($input['order_id'] ?? 0);
+
+    $pdo = db();
+    if (!empty($orderToken)) {
+        $stmt = $pdo->prepare("SELECT * FROM orders WHERE order_token = :token");
+        $stmt->execute(['token' => $orderToken]);
+    } elseif ($orderId > 0) {
+        $stmt = $pdo->prepare("SELECT * FROM orders WHERE id = :id");
+        $stmt->execute(['id' => $orderId]);
+    } else {
+        json_response(['success' => false, 'message' => 'Token pesanan tidak diberikan.'], 400);
+    }
+
+    $order = $stmt->fetch();
+    if (!$order) {
+        json_response(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
+    }
+
+    $updateStmt = $pdo->prepare("UPDATE orders SET payment_status = 'PAID', status = 'CONFIRMED', updated_at = CURRENT_TIMESTAMP WHERE id = :id");
+    $updateStmt->execute(['id' => $order['id']]);
+
+    json_response([
+        'success' => true,
+        'message' => 'Pembayaran QRIS berhasil disimulasikan & diverifikasi.',
+        'order_id' => (int)$order['id'],
+        'order_number' => $order['order_number'],
+        'order_token' => $order['order_token'],
+    ]);
+}
+
+// Franchise Lead Submission API (POST /api/franchise-leads/create) - PRD v2.0 FR-09
+if ($requestUri === '/api/franchise-leads/create' && $requestMethod === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+
+    $name = trim($input['name'] ?? '');
+    $city = trim($input['city'] ?? '');
+    $packageChosen = trim($input['package_chosen'] ?? 'Coffee Shop Standard (Rp 65 Juta)');
+    $phone = trim($input['whatsapp_number'] ?? $input['phone'] ?? '');
+    $notes = trim($input['notes'] ?? '');
+
+    if (empty($name) || empty($city) || empty($phone)) {
+        json_response(['success' => false, 'message' => 'Nama, kota, dan nomor WhatsApp wajib diisi.'], 422);
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare("
+        INSERT INTO franchise_leads (name, city, package_chosen, whatsapp_number, notes, status)
+        VALUES (:name, :city, :pkg, :phone, :notes, 'NEW')
+    ");
+    $stmt->execute([
+        'name' => $name,
+        'city' => $city,
+        'pkg' => $packageChosen,
+        'phone' => $phone,
+        'notes' => !empty($notes) ? $notes : null,
+    ]);
+
+    json_response([
+        'success' => true,
+        'message' => 'Data formulir proposal kemitraan berhasil disimpan.',
+        'lead_id' => (int)$pdo->lastInsertId(),
+    ]);
+}
+
+// Admin Franchise Leads CRM (GET /admin/franchise-leads) - PRD v2.0 FR-10
+if ($requestUri === '/admin/franchise-leads' && $requestMethod === 'GET') {
+    require_auth();
+    require dirname(__DIR__) . '/views/admin/franchise/index.php';
+    exit;
+}
+
+// Admin Franchise Leads CSV Export (GET /admin/franchise-leads/export) - PRD v2.0 FR-10
+if ($requestUri === '/admin/franchise-leads/export' && $requestMethod === 'GET') {
+    require_auth();
+    $pdo = db();
+    $leads = $pdo->query("SELECT id, name, city, package_chosen, whatsapp_number, status, created_at FROM franchise_leads ORDER BY created_at DESC")->fetchAll();
+    $headers = ['ID', 'Nama Mitra', 'Kota Rencana', 'Paket Peminatan', 'WhatsApp', 'Status', 'Tanggal Masuk'];
+    $rows = [];
+    foreach ($leads as $l) {
+        $rows[] = [
+            $l['id'],
+            $l['name'],
+            $l['city'],
+            $l['package_chosen'],
+            $l['whatsapp_number'],
+            $l['status'],
+            $l['created_at'],
+        ];
+    }
+    export_csv('prospek-kemitraan-' . date('Ymd-His') . '.csv', $headers, $rows);
+}
+
+// Admin Vouchers Management (GET /admin/vouchers) - PRD v2.0 FR-10
+if ($requestUri === '/admin/vouchers' && $requestMethod === 'GET') {
+    require_auth();
+    require dirname(__DIR__) . '/views/admin/vouchers/index.php';
+    exit;
+}
+
+// Admin Vouchers Toggle Active (POST /admin/vouchers/toggle) - PRD v2.0 FR-10
+if ($requestUri === '/admin/vouchers/toggle' && $requestMethod === 'POST') {
+    require_auth();
+    if (!verify_csrf_token()) {
+        flash('error', 'Token CSRF tidak valid.');
+        redirect('/admin/vouchers');
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+    $pdo = db();
+    $stmt = $pdo->prepare("UPDATE vouchers SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+
+    flash('success', 'Status voucher berhasil diperbarui.');
+    redirect('/admin/vouchers');
+}
+
+// Proposal Partnership PDF Download (GET /download/proposal-kemitraan) - PRD v2.0 FR-09
+if ($requestUri === '/download/proposal-kemitraan' && $requestMethod === 'GET') {
+    $pdfPath = dirname(__DIR__) . '/public/assets/docs/proposal-kemitraan.pdf';
+    if (!file_exists($pdfPath)) {
+        http_response_code(404);
+        echo 'Proposal kemitraan belum tersedia.';
+        exit;
+    }
+
+    if (ob_get_level()) {
+        ob_end_clean();
+    }
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: inline; filename="Proposal-Kemitraan-Kopi-Rasa-Nusantara.pdf"');
+    header('Content-Length: ' . filesize($pdfPath));
+    readfile($pdfPath);
+    exit;
+}
+
 // Fallback 404
 http_response_code(404);
 ?>
