@@ -37,7 +37,7 @@ $vhostContent = file_get_contents($vhostPath);
 assert_test("Nginx vhost has {{CLIENT_DOMAIN}} placeholder", str_contains($vhostContent, '{{CLIENT_DOMAIN}}'));
 assert_test("Nginx vhost has {{CLIENT_ROOT}} placeholder", str_contains($vhostContent, '{{CLIENT_ROOT}}'));
 assert_test("Document root strictly restricts to public/", str_contains($vhostContent, 'root {{CLIENT_ROOT}}/public;'));
-assert_test("PHP 8.3-FPM FastCGI socket configured", str_contains($vhostContent, 'fastcgi_pass unix:/run/php/php8.3-fpm.sock;'));
+assert_test("PHP-FPM FastCGI socket configured (PHP 8.3 / 8.5)", (bool)preg_match('/fastcgi_pass unix:\/run\/php\/php8\.[3-5]-fpm\.sock;/', $vhostContent));
 assert_test("Gzip compression enabled with high-speed types", str_contains($vhostContent, 'gzip on;') && str_contains($vhostContent, 'gzip_comp_level 6;'));
 assert_test("Static assets & WebP caching (expires 30d) configured", str_contains($vhostContent, 'webp') && str_contains($vhostContent, 'expires 30d;'));
 assert_test("Security headers configured (X-Frame-Options, X-Content-Type-Options)", str_contains($vhostContent, 'X-Frame-Options') && str_contains($vhostContent, 'X-Content-Type-Options'));
