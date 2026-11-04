@@ -6,6 +6,8 @@ declare(strict_types=1);
  * Sanitation (XSS), CSRF Protection, Currency Formatter, Auto-WebP Image Resizer & Auth Guards.
  */
 
+require_once __DIR__ . '/icons.php';
+
 // Start session if not already started
 function start_session_safe(): void
 {
@@ -608,4 +610,38 @@ class ReceiptPrinter
         // INIT + Text + Feed 3 lines + Partial Cut
         return $esc . "@" . $plain . $esc . "d\x03" . $gs . "V\x41\x00";
     }
+}
+
+
+/**
+ * Money formatting alias
+ */
+function format_money(int|float|null $amount, bool $withSymbol = true): string
+{
+    return format_rupiah($amount, $withSymbol);
+}
+
+/**
+ * Export array data to downloadable CSV
+ */
+function export_csv(string $filename, array $headers, array $rows): void
+{
+    if (ob_get_level()) {
+        ob_end_clean();
+    }
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
+    $output = fopen('php://output', 'w');
+    fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+    if (!empty($headers)) {
+        fputcsv($output, $headers);
+    }
+    foreach ($rows as $row) {
+        fputcsv($output, $row);
+    }
+    fclose($output);
+    exit;
 }

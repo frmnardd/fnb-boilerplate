@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 /**
  * FnB Boilerplate - Master Footer Layout
+ * Professional Edition: 100% Emoji-Free. Powered by Lucide SVG Icons.
  */
 
 $settings = get_setting();
@@ -13,8 +14,8 @@ $settings = get_setting();
                 <!-- Brand Info -->
                 <div class="space-y-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-primary/20">
-                            ☕
+                        <div class="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                            <?= icon('utensils', 'w-5 h-5') ?>
                         </div>
                         <span class="text-xl font-extrabold text-white tracking-tight">
                             <?= e($settings['site_name'] ?? 'Kopi & Rasa Nusantara') ?>
@@ -25,13 +26,10 @@ $settings = get_setting();
                     </p>
                     <div class="flex items-center gap-3 pt-2">
                         <a href="<?= format_whatsapp_url($settings['whatsapp_order_number'] ?? '', 'Halo, saya ingin bertanya') ?>" target="_blank" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-emerald-600 text-white flex items-center justify-center transition" title="WhatsApp Customer Service">
-                            💬
+                            <?= icon('whatsapp', 'w-4 h-4') ?>
                         </a>
-                        <a href="https://instagram.com" target="_blank" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-pink-600 text-white flex items-center justify-center transition" title="Instagram">
-                            📸
-                        </a>
-                        <a href="https://tiktok.com" target="_blank" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition" title="TikTok">
-                            🎵
+                        <a href="#home" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition" title="Beranda">
+                            <?= icon('globe', 'w-4 h-4') ?>
                         </a>
                     </div>
                 </div>
@@ -53,7 +51,7 @@ $settings = get_setting();
                     <h4 class="text-sm font-bold text-white uppercase tracking-wider">Layanan & Pemesanan</h4>
                     <ul class="space-y-3 text-xs">
                         <li class="flex items-start gap-2.5">
-                            <span class="text-emerald-400">📱</span>
+                            <span class="text-emerald-400 shrink-0 mt-0.5"><?= icon('phone', 'w-4 h-4') ?></span>
                             <div>
                                 <span class="block text-slate-500 font-semibold text-[11px]">WhatsApp Pesanan:</span>
                                 <a href="<?= format_whatsapp_url($settings['whatsapp_order_number'] ?? '') ?>" target="_blank" class="text-white hover:text-emerald-400 font-medium">
@@ -62,7 +60,7 @@ $settings = get_setting();
                             </div>
                         </li>
                         <li class="flex items-start gap-2.5">
-                            <span class="text-amber-400">💼</span>
+                            <span class="text-amber-400 shrink-0 mt-0.5"><?= icon('trending-up', 'w-4 h-4') ?></span>
                             <div>
                                 <span class="block text-slate-500 font-semibold text-[11px]">Kemitraan & Franchise:</span>
                                 <a href="<?= format_whatsapp_url($settings['whatsapp_franchise_number'] ?? '') ?>" target="_blank" class="text-white hover:text-amber-400 font-medium">
@@ -71,7 +69,7 @@ $settings = get_setting();
                             </div>
                         </li>
                         <li class="flex items-start gap-2.5">
-                            <span class="text-blue-400">🕒</span>
+                            <span class="text-blue-400 shrink-0 mt-0.5"><?= icon('clock', 'w-4 h-4') ?></span>
                             <div>
                                 <span class="block text-slate-500 font-semibold text-[11px]">Jam Operasional:</span>
                                 <span class="text-slate-300">Setiap Hari 08.00 - 23.00 WIB</span>
@@ -87,8 +85,8 @@ $settings = get_setting();
                         Tingkatkan kenyamanan pelanggan dine-in dengan memindai kode QR di meja untuk memesan langsung tanpa antre di kasir.
                     </p>
                     <div class="inline-flex items-center gap-3 p-3 rounded-2xl bg-slate-800/80 border border-slate-700/60">
-                        <div class="w-12 h-12 bg-white rounded-xl p-1 flex items-center justify-center font-black text-slate-900 text-xs">
-                            [ QR ]
+                        <div class="w-12 h-12 bg-white rounded-xl p-1 flex items-center justify-center text-slate-900">
+                            <?= icon('qr-code', 'w-7 h-7') ?>
                         </div>
                         <div class="text-[11px]">
                             <span class="font-bold text-white block">Self-Order Dine-In</span>

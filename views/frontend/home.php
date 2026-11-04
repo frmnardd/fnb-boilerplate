@@ -70,7 +70,7 @@ require dirname(__DIR__) . '/layouts/header.php';
     <!-- Active Dine-in Table Banner -->
     <div class="bg-slate-900 text-white py-3 px-4 text-center text-xs font-bold flex flex-wrap items-center justify-center gap-2 border-b border-slate-800 shadow-sm sticky top-0 z-30">
         <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary text-white text-[11px] font-black uppercase">
-            🪑 Meja <?= e($activeTable['table_number']) ?>
+            <?= icon('table-2', 'w-3.5 h-3.5') ?> Meja <?= e($activeTable['table_number']) ?>
         </span>
         <span class="text-slate-300">
             Area <?= e($activeTable['area']) ?> • Pesanan Anda terhubung langsung ke Dapur & Kasir
@@ -94,7 +94,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                 <!-- Hero Left Content -->
                 <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
                     <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-bold border border-primary/20">
-                        <span>✨ Rasa Nusantara Asli</span>
+                        <span class="inline-flex items-center gap-1"><?= icon('star', 'w-3.5 h-3.5') ?> Rasa Nusantara Asli</span>
                         <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
                         <span class="text-slate-600 font-semibold">Zero Commission Order</span>
                     </div>
@@ -113,14 +113,14 @@ require dirname(__DIR__) . '/layouts/header.php';
                             href="#food-menu"
                             class="w-full sm:w-auto px-7 py-4 rounded-2xl bg-primary hover:bg-primary/95 text-white font-extrabold text-sm sm:text-base shadow-xl shadow-primary/30 transition-all hover:-translate-y-0.5 text-center flex items-center justify-center gap-2"
                         >
-                            <span>🛒 Buka Menu & Pesan</span>
+                            <span class="inline-flex items-center gap-1.5"><?= icon('shopping-cart', 'w-4 h-4') ?> Buka Menu & Pesan</span>
                         </a>
 
                         <a 
                             href="#franchise"
                             class="w-full sm:w-auto px-7 py-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 text-slate-800 font-bold text-sm sm:text-base shadow-sm hover:shadow transition-all text-center flex items-center justify-center gap-2"
                         >
-                            <span>💼 Peluang Franchise & ROI</span>
+                            <span class="inline-flex items-center gap-1.5"><?= icon('trending-up', 'w-4 h-4') ?> Peluang Franchise & ROI</span>
                         </a>
                     </div>
 
@@ -157,7 +157,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                         <!-- Floating Promo Tag -->
                         <div class="absolute -bottom-6 -left-4 sm:left-4 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-100 shadow-xl flex items-center gap-3">
                             <div class="w-12 h-12 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-black text-lg">
-                                ☕
+                                <?= icon('coffee', 'w-6 h-6 text-slate-900') ?>
                             </div>
                             <div>
                                 <span class="text-xs font-bold text-slate-900 block">Promo Spesial Hari Ini</span>
@@ -315,7 +315,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                         <!-- Featured Badge -->
                         <template x-if="item.is_available === 1 && item.is_featured === 1">
                             <span class="absolute top-3 right-3 bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm">
-                                ★ Favorit
+                                <span class="inline-flex items-center gap-1"><?= icon('star', 'w-3 h-3 fill-slate-900') ?> Favorit</span>
                             </span>
                         </template>
                     </div>
@@ -357,7 +357,7 @@ require dirname(__DIR__) . '/layouts/header.php';
 
         <!-- Empty Filter Results -->
         <div x-show="filteredMenus.length === 0" class="text-center py-16 space-y-3 bg-white rounded-3xl border border-slate-200/80">
-            <span class="text-4xl block">🔍</span>
+            <div class="flex justify-center text-slate-300"><?= icon('search', 'w-10 h-10') ?></div>
             <h3 class="text-base font-bold text-slate-800">Tidak ada menu yang sesuai</h3>
             <p class="text-xs text-slate-500">Silakan ubah kata kunci pencarian atau pilih kategori lain.</p>
             <button @click="activeCategory = 'all'; searchQuery = ''" class="text-xs font-bold text-primary hover:underline">
@@ -388,7 +388,7 @@ require dirname(__DIR__) . '/layouts/header.php';
             <div class="bg-slate-800/80 backdrop-blur-md rounded-3xl border border-slate-700/80 p-6 sm:p-8 space-y-8">
                 <div>
                     <h3 class="text-lg font-bold text-amber-300 flex items-center gap-2">
-                        <span>📊</span>
+                        <span><?= icon('bar-chart-2', 'w-5 h-5') ?></span>
                         <span>Kalkulator Simulasi Balik Modal (ROI)</span>
                     </h3>
                     <p class="text-xs text-slate-400 mt-1">
@@ -498,7 +498,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                         target="_blank"
                         class="inline-flex items-center justify-center gap-3 w-full sm:w-auto px-8 py-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm sm:text-base shadow-xl shadow-amber-400/20 transition-all hover:scale-105 active:scale-95"
                     >
-                        <span>💬 Konsultasikan Slot Kemitraan via WhatsApp</span>
+                        <span class="inline-flex items-center gap-2"><?= icon('whatsapp', 'w-5 h-5') ?> Konsultasikan Slot Kemitraan via WhatsApp</span>
                     </a>
                     <p class="text-[11px] text-slate-400 mt-2">
                         Tim Business Development kami siap membantu survey lokasi potensial & proposal detail.
@@ -527,14 +527,14 @@ require dirname(__DIR__) . '/layouts/header.php';
                 <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between space-y-6">
                     <div class="space-y-4">
                         <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-xl font-bold">
-                            📍
+                            <?= icon('map-pin', 'w-6 h-6') ?>
                         </div>
                         <div>
                             <h3 class="text-xl font-extrabold text-slate-900"><?= e($outlet['name']) ?></h3>
                             <p class="text-xs text-slate-500 mt-2 leading-relaxed"><?= e($outlet['address']) ?></p>
                         </div>
                         <div class="flex items-center gap-2 text-xs text-slate-700 font-semibold bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                            <span>🕒</span>
+                            <span><?= icon('clock', 'w-4 h-4 text-slate-400') ?></span>
                             <span>Jam Buka: <?= e($outlet['open_hours'] ?? '08:00 - 22:00 WIB') ?></span>
                         </div>
                     </div>
@@ -545,7 +545,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                         <div class="grid grid-cols-2 gap-2 text-xs">
                             <?php if (!empty($outlet['gmaps_link'])): ?>
                                 <a href="<?= e($outlet['gmaps_link']) ?>" target="_blank" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-center transition flex items-center justify-center gap-1.5">
-                                    <span>📍</span>
+                                    <span><?= icon('map-pin', 'w-3.5 h-3.5') ?></span>
                                     <span>Google Maps</span>
                                 </a>
                             <?php endif; ?>
@@ -612,7 +612,7 @@ require dirname(__DIR__) . '/layouts/header.php';
             @click="callOpen = true"
             class="flex items-center gap-2.5 px-4 py-3.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-2xl shadow-slate-900/40 border-2 border-white/20 transition-all active:scale-95 hover:scale-105"
         >
-            <span class="text-base animate-bounce">🛎️</span>
+            <?= icon('bell', 'w-4 h-4 text-white') ?>
             <span>Panggil Pelayan (Meja <?= e($activeTable['table_number']) ?>)</span>
         </button>
     </div>
@@ -629,19 +629,19 @@ require dirname(__DIR__) . '/layouts/header.php';
         >
             <div class="flex items-center justify-between pb-4 border-b border-slate-100">
                 <div class="flex items-center gap-2.5">
-                    <span class="text-2xl">🛎️</span>
+                    <?= icon('bell', 'w-6 h-6 text-primary') ?>
                     <div>
                         <h3 class="text-base font-bold text-slate-900">Panggil Pelayan</h3>
                         <p class="text-[11px] text-slate-400">Meja <?= e($activeTable['table_number']) ?> (<?= e($activeTable['area']) ?>)</p>
                     </div>
                 </div>
-                <button @click="callOpen = false" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+                <button @click="callOpen = false" class="text-slate-400 hover:text-slate-600 font-bold text-lg"><?= icon('x', 'w-5 h-5') ?></button>
             </div>
 
             <!-- Success State -->
             <div x-show="callSuccess" class="py-8 text-center space-y-2">
                 <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 text-2xl flex items-center justify-center mx-auto">
-                    ✓
+                    <?= icon('check', 'w-6 h-6') ?>
                 </div>
                 <h4 class="text-base font-bold text-slate-900">Panggilan Diterima!</h4>
                 <p class="text-xs text-slate-500">Pelayan segera menuju ke Meja <?= e($activeTable['table_number']) ?>.</p>
@@ -657,7 +657,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                         :class="selectedType === 'WATER_TISSUE' ? 'border-primary bg-primary/5 text-slate-900 font-bold' : 'border-slate-200 text-slate-700'"
                         class="p-3 rounded-2xl border flex items-center gap-3 cursor-pointer transition text-xs"
                     >
-                        <span class="text-lg">💧</span>
+                        <span class="text-cyan-500"><?= icon('coffee', 'w-5 h-5') ?></span>
                         <div class="flex-1">
                             <span class="block font-bold">Minta Air Mineral & Tissue</span>
                             <span class="text-[10px] text-slate-400 block">Antar air minum atau tisu tambahan</span>
@@ -669,7 +669,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                         :class="selectedType === 'ASK_MENU' ? 'border-primary bg-primary/5 text-slate-900 font-bold' : 'border-slate-200 text-slate-700'"
                         class="p-3 rounded-2xl border flex items-center gap-3 cursor-pointer transition text-xs"
                     >
-                        <span class="text-lg">🙋</span>
+                        <span class="text-blue-500"><?= icon('user', 'w-5 h-5') ?></span>
                         <div class="flex-1">
                             <span class="block font-bold">Panggil Pelayan ke Meja</span>
                             <span class="text-[10px] text-slate-400 block">Bantuan informasi atau rekomendasi menu</span>
@@ -681,7 +681,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                         :class="selectedType === 'CLEAN_TABLE' ? 'border-primary bg-primary/5 text-slate-900 font-bold' : 'border-slate-200 text-slate-700'"
                         class="p-3 rounded-2xl border flex items-center gap-3 cursor-pointer transition text-xs"
                     >
-                        <span class="text-lg">🧹</span>
+                        <span class="text-amber-500"><?= icon('refresh-cw', 'w-5 h-5') ?></span>
                         <div class="flex-1">
                             <span class="block font-bold">Bersihkan Meja</span>
                             <span class="text-[10px] text-slate-400 block">Angkat piring kotor atau lap meja</span>
@@ -693,7 +693,7 @@ require dirname(__DIR__) . '/layouts/header.php';
                         :class="selectedType === 'REQUEST_BILL' ? 'border-primary bg-primary/5 text-slate-900 font-bold' : 'border-slate-200 text-slate-700'"
                         class="p-3 rounded-2xl border flex items-center gap-3 cursor-pointer transition text-xs"
                     >
-                        <span class="text-lg">🧾</span>
+                        <span class="text-emerald-500"><?= icon('receipt', 'w-5 h-5') ?></span>
                         <div class="flex-1">
                             <span class="block font-bold">Minta Tagihan / Bill</span>
                             <span class="text-[10px] text-slate-400 block">Siapkan struk dan metode bayar</span>

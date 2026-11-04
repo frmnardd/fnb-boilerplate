@@ -283,17 +283,17 @@ document.addEventListener('alpine:init', () => {
             const message = 
 `Halo *${siteName}*, saya ingin memesan via website:
 
-━━━━━━━━━━━━━━━━━━━━
+----------------------------------------
 *DAFTAR PESANAN:*
 ${itemsText.trim()}
-━━━━━━━━━━━━━━━━━━━━
+----------------------------------------
 *TOTAL BAYAR: ${totalText}*
 *TIPE PESANAN: ${typeLabel}*
 
 *DETAIL PEMESAN:*
 ${detailsText}
 
-Mohon konfirmasi ketersediaan pesanan dan rincian pembayarannya. Terima kasih! 🙏`;
+Mohon konfirmasi ketersediaan pesanan dan rincian pembayarannya. Terima kasih!`;
 
             this.save();
 

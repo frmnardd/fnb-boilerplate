@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * FnB Boilerplate - White-Label Brand Settings Panel View
- * Instant rebranding within 15 minutes: Logo, Brand Colors, WhatsApp numbers & Pixel IDs.
+ * Professional Edition: 100% Emoji-Free. Powered by Lucide SVG Icons.
  */
 
 $title = 'Pengaturan Brand (White-Label)';
@@ -28,8 +28,9 @@ $settings = get_setting();
 
         <!-- 1. Brand Identity -->
         <div class="space-y-4">
-            <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-                1. Identitas & Nama Brand (White-Label)
+            <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
+                <?= icon('settings', 'w-4 h-4 text-primary') ?>
+                <span>1. Identitas & Nama Brand (White-Label)</span>
             </h3>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -61,11 +62,13 @@ $settings = get_setting();
         <!-- 2. Dynamic Theme Engine (Theme Colors) -->
         <div class="space-y-4 pt-4 border-t border-slate-100">
             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-                <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
-                    2. Warna Tema Visual (CSS Variables Engine)
+                <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <?= icon('layers', 'w-4 h-4 text-primary') ?>
+                    <span>2. Warna Tema Visual (CSS Variables Engine)</span>
                 </h3>
-                <span class="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
-                    ✓ Tanpa Perlu Rebuild CSS
+                <span class="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                    <?= icon('check', 'w-3 h-3') ?>
+                    <span>Tanpa Rebuild CSS</span>
                 </span>
             </div>
 
@@ -116,8 +119,9 @@ $settings = get_setting();
 
         <!-- 3. WhatsApp Integration -->
         <div class="space-y-4 pt-4 border-t border-slate-100">
-            <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-                3. Integrasi WhatsApp Pemesanan & Kemitraan
+            <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
+                <?= icon('whatsapp', 'w-4 h-4 text-emerald-600') ?>
+                <span>3. Integrasi WhatsApp Pemesanan & Kemitraan</span>
             </h3>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -135,7 +139,7 @@ $settings = get_setting();
                 </div>
 
                 <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-slate-700">Nomor WhatsApp Business Development (Franchise)</label>
+                    <label class="block text-xs font-bold text-slate-700">Nomor WhatsApp Franchise / Kemitraan</label>
                     <input 
                         type="text" 
                         name="whatsapp_franchise_number" 
@@ -159,8 +163,9 @@ $settings = get_setting();
 
         <!-- 4. Announcement Bar -->
         <div class="space-y-4 pt-4 border-t border-slate-100">
-            <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-                4. Announcement Bar (Pengumuman Berjalan)
+            <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
+                <?= icon('bell', 'w-4 h-4 text-primary') ?>
+                <span>4. Announcement Bar (Pengumuman Berjalan)</span>
             </h3>
 
             <div class="space-y-3">
@@ -190,8 +195,9 @@ $settings = get_setting();
 
         <!-- 5. Advertising Pixels & Analytics -->
         <div class="space-y-4 pt-4 border-t border-slate-100">
-            <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-                5. Tracking Pixel Iklan & Analitik
+            <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
+                <?= icon('activity', 'w-4 h-4 text-primary') ?>
+                <span>5. Tracking Pixel Iklan & Analitik</span>
             </h3>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">

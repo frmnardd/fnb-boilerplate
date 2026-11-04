@@ -2,35 +2,43 @@
 declare(strict_types=1);
 
 /**
- * FnB Boilerplate - Cashier POS & Order Management
+ * FnB Boilerplate - Cashier POS & Order Management (Professional Edition)
+ * Zero emoji. Uses Lucide SVG icons. Search filter & thermal receipt generator.
  */
 
 $title = 'Pesanan & Kasir POS';
-$subtitle = 'Manajemen antrean pesanan pelanggan, validasi pembayaran, dan cetak struk kasir.';
+$subtitle = 'Manajemen antrean pesanan pelanggan, validasi pembayaran kasir, dan cetak struk thermal.';
 require dirname(__DIR__) . '/layout/header.php';
 
 $pdo = db();
 $settings = get_setting();
 
 $statusFilter = trim($_GET['status'] ?? '');
+$searchQuery = trim($_GET['q'] ?? '');
+
+$sql = "
+    SELECT o.*, t.table_number, t.area 
+    FROM orders o 
+    LEFT JOIN tables t ON o.table_id = t.id 
+    WHERE 1=1
+";
+$params = [];
+
 if (!empty($statusFilter)) {
-    $stmt = $pdo->prepare("
-        SELECT o.*, t.table_number, t.area 
-        FROM orders o 
-        LEFT JOIN tables t ON o.table_id = t.id 
-        WHERE o.status = :status 
-        ORDER BY o.created_at DESC
-    ");
-    $stmt->execute(['status' => $statusFilter]);
-    $orders = $stmt->fetchAll();
-} else {
-    $orders = $pdo->query("
-        SELECT o.*, t.table_number, t.area 
-        FROM orders o 
-        LEFT JOIN tables t ON o.table_id = t.id 
-        ORDER BY o.created_at DESC
-    ")->fetchAll();
+    $sql .= " AND o.status = :status";
+    $params['status'] = $statusFilter;
 }
+
+if (!empty($searchQuery)) {
+    $sql .= " AND (o.order_number LIKE :q OR o.customer_name LIKE :q)";
+    $params['q'] = '%' . $searchQuery . '%';
+}
+
+$sql .= " ORDER BY o.created_at DESC";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$orders = $stmt->fetchAll();
 
 // Fetch items for each order
 foreach ($orders as &$ord) {
@@ -40,7 +48,7 @@ foreach ($orders as &$ord) {
 }
 unset($ord);
 
-// Total counts
+// Total counts for metric badges
 $totalOrders = (int)$pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn();
 $pendingOrders = (int)$pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'PENDING'")->fetchColumn();
 $activeOrders = (int)$pdo->query("SELECT COUNT(*) FROM orders WHERE status IN ('CONFIRMED', 'COOKING', 'READY')")->fetchColumn();
@@ -51,67 +59,115 @@ $todayRevenue = (int)$pdo->query("SELECT COALESCE(SUM(grand_total), 0) FROM orde
 
     <!-- Metrics Row -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Pesanan</span>
-            <span class="text-2xl font-black text-slate-900 mt-1 block"><?= $totalOrders ?> Nota</span>
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Pesanan</span>
+                <span class="text-2xl font-black text-slate-900 mt-1 block"><?= $totalOrders ?> Nota</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center">
+                <?= icon('receipt', 'w-6 h-6') ?>
+            </div>
         </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Menunggu Konfirmasi</span>
-            <span class="text-2xl font-black text-amber-600 mt-1 block"><?= $pendingOrders ?> Menunggu</span>
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Menunggu Konfirmasi</span>
+                <span class="text-2xl font-black text-amber-600 mt-1 block"><?= $pendingOrders ?> Menunggu</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <?= icon('clock', 'w-6 h-6') ?>
+            </div>
         </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Sedang Diproses</span>
-            <span class="text-2xl font-black text-cyan-600 mt-1 block"><?= $activeOrders ?> Aktif</span>
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Sedang Diproses</span>
+                <span class="text-2xl font-black text-cyan-600 mt-1 block"><?= $activeOrders ?> Aktif</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
+                <?= icon('chef-hat', 'w-6 h-6') ?>
+            </div>
         </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Omzet Penjualan</span>
-            <span class="text-2xl font-black text-emerald-600 mt-1 block"><?= format_rupiah($todayRevenue) ?></span>
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Omzet Terbayar</span>
+                <span class="text-2xl font-black text-emerald-600 mt-1 block"><?= format_rupiah($todayRevenue) ?></span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <?= icon('dollar-sign', 'w-6 h-6') ?>
+            </div>
         </div>
     </div>
 
-    <!-- Filters & Tabs -->
-    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div class="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+    <!-- Filters, Search Bar & Tabs -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <!-- Search Form -->
+            <form method="GET" action="/admin/orders" class="w-full sm:w-80 relative">
+                <?php if (!empty($statusFilter)): ?>
+                    <input type="hidden" name="status" value="<?= e($statusFilter) ?>">
+                <?php endif; ?>
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <?= icon('search', 'w-4 h-4') ?>
+                </div>
+                <input 
+                    type="text" 
+                    name="q" 
+                    value="<?= e($searchQuery) ?>" 
+                    placeholder="Cari no. nota / nama pelanggan..." 
+                    class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs focus:border-primary focus:ring-1 focus:ring-primary bg-slate-50 focus:bg-white transition"
+                >
+            </form>
+
+            <!-- KDS Shortcut Button -->
             <a 
-                href="/admin/orders" 
-                class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap <?= empty($statusFilter) ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
+                href="/admin/kds" 
+                target="_blank" 
+                class="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold shadow hover:bg-slate-800 transition flex items-center justify-center gap-2"
+            >
+                <?= icon('monitor', 'w-4 h-4') ?>
+                <span>Layar KDS Dapur</span>
+                <span class="text-[9px] bg-emerald-500 text-slate-950 font-black px-1.5 py-0.5 rounded">Live</span>
+            </a>
+        </div>
+
+        <!-- Status Filter Tabs -->
+        <div class="flex items-center gap-2 overflow-x-auto pt-2 border-t border-slate-100">
+            <a 
+                href="/admin/orders<?= !empty($searchQuery) ? '?q=' . urlencode($searchQuery) : '' ?>" 
+                class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap <?= empty($statusFilter) ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
             >
                 Semua (<?= $totalOrders ?>)
             </a>
             <a 
-                href="/admin/orders?status=PENDING" 
-                class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap <?= $statusFilter === 'PENDING' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
+                href="/admin/orders?status=PENDING<?= !empty($searchQuery) ? '&q=' . urlencode($searchQuery) : '' ?>" 
+                class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap <?= $statusFilter === 'PENDING' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
             >
-                ⏳ Menunggu (<?= $pendingOrders ?>)
+                Menunggu (<?= $pendingOrders ?>)
             </a>
             <a 
-                href="/admin/orders?status=COOKING" 
-                class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap <?= $statusFilter === 'COOKING' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
+                href="/admin/orders?status=COOKING<?= !empty($searchQuery) ? '&q=' . urlencode($searchQuery) : '' ?>" 
+                class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap <?= $statusFilter === 'COOKING' ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
             >
-                👨‍🍳 Sedang Masak
+                Sedang Masak
             </a>
             <a 
-                href="/admin/orders?status=READY" 
-                class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap <?= $statusFilter === 'READY' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
+                href="/admin/orders?status=READY<?= !empty($searchQuery) ? '&q=' . urlencode($searchQuery) : '' ?>" 
+                class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap <?= $statusFilter === 'READY' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
             >
-                🔔 Siap Saji
+                Siap Saji
             </a>
             <a 
-                href="/admin/orders?status=COMPLETED" 
-                class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap <?= $statusFilter === 'COMPLETED' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
+                href="/admin/orders?status=COMPLETED<?= !empty($searchQuery) ? '&q=' . urlencode($searchQuery) : '' ?>" 
+                class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap <?= $statusFilter === 'COMPLETED' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
             >
-                ✓ Selesai
+                Selesai
+            </a>
+            <a 
+                href="/admin/orders?status=CANCELLED<?= !empty($searchQuery) ? '&q=' . urlencode($searchQuery) : '' ?>" 
+                class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap <?= $statusFilter === 'CANCELLED' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"
+            >
+                Batal
             </a>
         </div>
-
-        <a 
-            href="/admin/kds" 
-            target="_blank" 
-            class="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold shadow hover:bg-slate-800 transition flex items-center justify-center gap-2"
-        >
-            <span>👨‍🍳 Buka Layar KDS Dapur</span>
-            <span class="text-[10px] bg-emerald-500 text-slate-950 font-black px-1.5 py-0.5 rounded">Live</span>
-        </a>
     </div>
 
     <!-- Orders Table List -->
@@ -133,7 +189,7 @@ $todayRevenue = (int)$pdo->query("SELECT COALESCE(SUM(grand_total), 0) FROM orde
                     <?php if (empty($orders)): ?>
                         <tr>
                             <td colspan="7" class="py-12 text-center text-slate-400 text-sm">
-                                Tidak ada data pesanan pada kriteria ini.
+                                Tidak ada data pesanan pada kriteria pencarian ini.
                             </td>
                         </tr>
                     <?php endif; ?>
@@ -143,8 +199,8 @@ $todayRevenue = (int)$pdo->query("SELECT COALESCE(SUM(grand_total), 0) FROM orde
                         $statusBadge = 'bg-slate-100 text-slate-700';
                         if ($order['status'] === 'PENDING') $statusBadge = 'bg-amber-50 text-amber-700 border-amber-200';
                         elseif ($order['status'] === 'COOKING') $statusBadge = 'bg-cyan-50 text-cyan-700 border-cyan-200';
-                        elseif ($order['status'] === 'READY') $statusBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                        elseif ($order['status'] === 'COMPLETED') $statusBadge = 'bg-slate-100 text-slate-600 border-slate-200';
+                        elseif ($order['status'] === 'READY') $statusBadge = 'bg-blue-50 text-blue-700 border-blue-200';
+                        elseif ($order['status'] === 'COMPLETED') $statusBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                         elseif ($order['status'] === 'CANCELLED') $statusBadge = 'bg-rose-50 text-rose-700 border-rose-200';
                         ?>
                         <tr class="hover:bg-slate-50/60 transition">
@@ -158,7 +214,7 @@ $todayRevenue = (int)$pdo->query("SELECT COALESCE(SUM(grand_total), 0) FROM orde
 
                             <!-- Customer & Table -->
                             <td class="py-4 px-6">
-                                <strong class="text-slate-900 font-bold block"><?= e($order['customer_name']) ?></strong>
+                                <strong class="text-slate-900 font-bold block"><?= e($order['customer_name'] ?? 'Tamu') ?></strong>
                                 <span class="inline-block px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-bold mt-1">
                                     <?= !empty($order['table_number']) ? 'Meja ' . e($order['table_number']) . ' (' . e($order['area']) . ')' : e($order['order_type']) ?>
                                 </span>
@@ -225,7 +281,7 @@ $todayRevenue = (int)$pdo->query("SELECT COALESCE(SUM(grand_total), 0) FROM orde
                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition" 
                                     title="Cetak Struk Thermal"
                                 >
-                                    <span>🖨️</span>
+                                    <?= icon('printer', 'w-3.5 h-3.5') ?>
                                     <span>Struk</span>
                                 </a>
 
@@ -239,7 +295,7 @@ $todayRevenue = (int)$pdo->query("SELECT COALESCE(SUM(grand_total), 0) FROM orde
                                             type="submit" 
                                             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-sm transition"
                                         >
-                                            <span>✓</span>
+                                            <?= icon('check', 'w-3.5 h-3.5') ?>
                                             <span>Bayar Lunas</span>
                                         </button>
                                     </form>

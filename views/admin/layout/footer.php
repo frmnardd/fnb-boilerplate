@@ -1,21 +1,38 @@
 <?php
 declare(strict_types=1);
-
-/**
- * FnB Boilerplate - TailAdmin Layout Footer
- */
+// Close main content wrapper opened in header.php
 ?>
-                </div>
-            </main>
-        </div>
-    </div>
+                </div><!-- end max-w-screen-2xl -->
+            </main><!-- end main -->
+        </div><!-- end flex-1 -->
+    </div><!-- end flex h-screen -->
 
-    <!-- Global Helpers for API Calls with CSRF -->
     <script>
-        window.getCsrfToken = function() {
-            const meta = document.querySelector('meta[name="csrf-token"]');
-            return meta ? meta.getAttribute('content') : '';
-        };
+    // Global CSRF helper
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+    }
+
+    // Global fetch helper with CSRF
+    async function csrfFetch(url, options = {}) {
+        const headers = { 'X-Requested-With': 'XMLHttpRequest', ...(options.headers || {}) };
+        if (!options.body || options.body instanceof FormData) {
+            // For FormData, CSRF is already in body
+        }
+        return fetch(url, { ...options, headers });
+    }
+
+    // Auto-dismiss flash messages after 5 seconds
+    document.addEventListener('DOMContentLoaded', () => {
+        const flashes = document.querySelectorAll('[data-flash-auto-dismiss]');
+        flashes.forEach(el => {
+            setTimeout(() => {
+                el.style.transition = 'opacity 0.5s';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 500);
+            }, 5000);
+        });
+    });
     </script>
 </body>
 </html>

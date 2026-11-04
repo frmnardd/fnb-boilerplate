@@ -3,10 +3,13 @@ declare(strict_types=1);
 
 /**
  * FnB Boilerplate - Thermal Receipt Viewer (58mm & 80mm ESC/POS)
+ * Professional Edition: 100% Emoji-Free. Powered by Lucide SVG Icons.
  */
 
 start_session_safe();
 require_auth();
+
+require_once dirname(__DIR__, 3) . '/config/icons.php';
 
 $id = (int)($_GET['id'] ?? 0);
 $paperWidth = (int)($_GET['width'] ?? 58);
@@ -99,16 +102,17 @@ $receiptText = ReceiptPrinter::formatPlainText($order, $settings, $paperWidth);
         <div class="flex items-center gap-2">
             <a 
                 href="/admin/orders/receipt?id=<?= $order['id'] ?>&width=<?= $paperWidth ?>&format=escpos" 
-                class="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold font-sans hover:bg-slate-50 transition" 
+                class="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold font-sans hover:bg-slate-50 transition inline-flex items-center gap-1.5" 
                 title="Unduh Payload ESC/POS Mentah"
             >
-                💾 ESC/POS
+                <?= icon('download', 'w-3.5 h-3.5') ?>
+                <span>ESC/POS</span>
             </a>
             <button 
                 onclick="window.print()" 
                 class="px-4 py-1.5 rounded-xl bg-primary text-white text-xs font-bold font-sans shadow-md shadow-primary/20 hover:opacity-90 transition flex items-center gap-1.5"
             >
-                <span>🖨️</span>
+                <?= icon('printer', 'w-3.5 h-3.5') ?>
                 <span>Cetak Struk</span>
             </button>
         </div>

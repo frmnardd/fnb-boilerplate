@@ -2,7 +2,8 @@
 declare(strict_types=1);
 
 /**
- * FnB Boilerplate - Table Management & QR Studio
+ * FnB Boilerplate - Table Management & QR Studio (Professional Edition)
+ * Zero emoji. Lucide SVG icons. High-reliability client-side QRCode.js library.
  */
 
 $title = 'Studio Meja & QR Code';
@@ -10,6 +11,7 @@ $subtitle = 'Kelola denah meja, nomor meja, status okupansi, dan cetak QR Code m
 require dirname(__DIR__) . '/layout/header.php';
 
 $pdo = db();
+$settings = get_setting();
 
 // Fetch tables
 $areaFilter = trim($_GET['area'] ?? '');
@@ -36,12 +38,17 @@ foreach ($tables as $t) {
 }
 ?>
 
+<!-- Include QRCode.js Open-Source Library (MIT) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <div class="space-y-6" x-data="{
     tableModalOpen: false,
     qrModalOpen: false,
     editMode: false,
     form: { id: 0, table_number: '', area: 'Indoor', pin: '1234' },
     activeQr: { number: '', area: '', slug: '', url: '' },
+    qrInstance: null,
+
     openCreate() {
         this.editMode = false;
         this.form = { id: 0, table_number: '', area: 'Indoor', pin: '1234' };
@@ -60,31 +67,65 @@ foreach ($tables as $t) {
             url: window.location.origin + '/t/' + table.qr_slug
         };
         this.qrModalOpen = true;
+        this.$nextTick(() => {
+            const container = document.getElementById('qrcodeContainer');
+            if (container) {
+                container.innerHTML = '';
+                new QRCode(container, {
+                    text: this.activeQr.url,
+                    width: 180,
+                    height: 180,
+                    colorDark: '#0F172A',
+                    colorLight: '#FFFFFF',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+        });
     }
 }">
 
     <!-- Top Stats Row -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Meja</span>
-            <span class="text-2xl font-black text-slate-900 mt-1 block"><?= $totalTables ?> Meja</span>
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Meja</span>
+                <span class="text-2xl font-black text-slate-900 mt-1 block"><?= $totalTables ?> Meja</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center">
+                <?= icon('table-2', 'w-6 h-6') ?>
+            </div>
         </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Tersedia</span>
-            <span class="text-2xl font-black text-emerald-600 mt-1 block"><?= $availableCount ?> Meja</span>
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Tersedia</span>
+                <span class="text-2xl font-black text-emerald-600 mt-1 block"><?= $availableCount ?> Meja</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <?= icon('check-circle', 'w-6 h-6') ?>
+            </div>
         </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Terisi</span>
-            <span class="text-2xl font-black text-amber-600 mt-1 block"><?= $occupiedCount ?> Meja</span>
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Terisi Tamu</span>
+                <span class="text-2xl font-black text-amber-600 mt-1 block"><?= $occupiedCount ?> Meja</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <?= icon('users', 'w-6 h-6') ?>
+            </div>
         </div>
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Perlu Dibersihkan</span>
-            <span class="text-2xl font-black text-rose-600 mt-1 block"><?= $cleaningCount ?> Meja</span>
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+            <div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Perlu Dibersihkan</span>
+                <span class="text-2xl font-black text-rose-600 mt-1 block"><?= $cleaningCount ?> Meja</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                <?= icon('alert-triangle', 'w-6 h-6') ?>
+            </div>
         </div>
     </div>
 
     <!-- Header Actions & Filters -->
-    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <!-- Area Filter Tabs -->
         <div class="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
             <a 
@@ -108,7 +149,7 @@ foreach ($tables as $t) {
             @click="openCreate()" 
             class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-md shadow-primary/20 hover:opacity-95 transition flex items-center justify-center gap-2"
         >
-            <span>➕</span>
+            <?= icon('plus', 'w-4 h-4') ?>
             <span>Tambah Meja Baru</span>
         </button>
     </div>
@@ -157,7 +198,7 @@ foreach ($tables as $t) {
                         >
                             <option value="AVAILABLE" <?= $table['status'] === 'AVAILABLE' ? 'selected' : '' ?>>Tersedia</option>
                             <option value="OCCUPIED" <?= $table['status'] === 'OCCUPIED' ? 'selected' : '' ?>>Terisi</option>
-                            <option value="NEEDS_CLEANING" <?= $table['status'] === 'NEEDS_CLEANING' ? 'selected' : '' ?>>Perlu Dibersihkan</option>
+                            <option value="NEEDS_CLEANING" <?= $table['status'] === 'NEEDS_CLEANING' ? 'selected' : '' ?>>Perlu Bersih</option>
                         </select>
                     </form>
 
@@ -167,7 +208,7 @@ foreach ($tables as $t) {
                         class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition" 
                         title="Cetak Kartu QR"
                     >
-                        📲
+                        <?= icon('qr-code', 'w-4 h-4') ?>
                     </button>
 
                     <!-- Edit Button -->
@@ -176,7 +217,7 @@ foreach ($tables as $t) {
                         class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition" 
                         title="Ubah Data"
                     >
-                        ✏️
+                        <?= icon('edit', 'w-4 h-4') ?>
                     </button>
                 </div>
             </div>
@@ -195,7 +236,9 @@ foreach ($tables as $t) {
         >
             <div class="flex items-center justify-between pb-4 border-b border-slate-100">
                 <h3 class="text-lg font-bold text-slate-900" x-text="editMode ? 'Ubah Data Meja' : 'Tambah Meja Baru'"></h3>
-                <button @click="tableModalOpen = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+                <button @click="tableModalOpen = false" class="text-slate-400 hover:text-slate-600 font-bold p-1">
+                    <?= icon('x', 'w-5 h-5') ?>
+                </button>
             </div>
 
             <form action="/admin/tables/save" method="POST" class="mt-6 space-y-4">
@@ -227,7 +270,7 @@ foreach ($tables as $t) {
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">PIN Meja (Opsional / Anti-Prank)</label>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">PIN Meja (Anti-Prank)</label>
                     <input 
                         type="text" 
                         name="pin" 
@@ -277,13 +320,9 @@ foreach ($tables as $t) {
                     <h2 class="text-4xl font-black text-slate-900" x-text="activeQr.number"></h2>
                 </div>
 
-                <!-- Live Generated QR Image -->
+                <!-- Client-Side Rendered QR Code using QRCode.js -->
                 <div class="p-3 bg-white border border-slate-200 rounded-xl inline-block shadow-sm">
-                    <img 
-                        :src="'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(activeQr.url)" 
-                        alt="QR Code Meja" 
-                        class="w-40 h-40 object-contain mx-auto"
-                    >
+                    <div id="qrcodeContainer" class="flex justify-center items-center w-[180px] h-[180px] mx-auto"></div>
                 </div>
 
                 <div class="mt-3">
@@ -303,7 +342,7 @@ foreach ($tables as $t) {
                     @click="window.print()" 
                     class="px-6 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold shadow hover:bg-slate-800 transition flex items-center gap-2"
                 >
-                    <span>🖨️</span>
+                    <?= icon('printer', 'w-4 h-4') ?>
                     <span>Cetak Tent Card</span>
                 </button>
             </div>

@@ -3,12 +3,13 @@ declare(strict_types=1);
 
 /**
  * FnB Boilerplate - Menu Create & Edit Form View
- * Includes Auto-WebP File Upload & Interactive Variant JSON Builder.
+ * Includes Auto-WebP File Upload, Station (Kitchen/Bar) & HPP Cost Price.
+ * 100% Emoji-Free. Powered by Lucide SVG Icons.
  */
 
 $isEdit = !empty($menu['id']);
 $title = $isEdit ? 'Edit Menu: ' . e($menu['name']) : 'Tambah Menu Baru';
-$subtitle = 'Isi data hidangan, harga, foto produk (auto WebP), dan pilihan varian.';
+$subtitle = 'Isi data hidangan, stasiun produksi, HPP modal, harga jual, dan pilihan varian.';
 require dirname(__DIR__) . '/layout/header.php';
 
 $pdo = db();
@@ -22,8 +23,9 @@ if (!empty($menu['variants_json'])) {
 
 <div class="max-w-4xl mx-auto space-y-6">
     <div class="flex items-center justify-between">
-        <a href="/admin/menus" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5">
-            <span>← Kembali ke Daftar Menu</span>
+        <a href="/admin/menus" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5 transition">
+            <?= icon('arrow-left', 'w-3.5 h-3.5') ?>
+            <span>Kembali ke Daftar Menu</span>
         </a>
     </div>
 
@@ -75,6 +77,17 @@ if (!empty($menu['variants_json'])) {
                 </div>
 
                 <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700">Stasiun Produksi (KDS)</label>
+                    <select 
+                        name="station" 
+                        class="w-full text-xs sm:text-sm px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-primary transition font-semibold"
+                    >
+                        <option value="KITCHEN" <?= ($menu['station'] ?? 'KITCHEN') === 'KITCHEN' ? 'selected' : '' ?>>Dapur (Kitchen / Makanan)</option>
+                        <option value="BAR" <?= ($menu['station'] ?? '') === 'BAR' ? 'selected' : '' ?>>Barista (Bar / Minuman)</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1.5 sm:col-span-2">
                     <label class="block text-xs font-bold text-slate-700">Urutan Tampil (Sort Order)</label>
                     <input 
                         type="number" 
@@ -96,15 +109,15 @@ if (!empty($menu['variants_json'])) {
             </div>
         </div>
 
-        <!-- 2. Pricing & Stock Status -->
+        <!-- 2. Pricing, HPP & Stock Status -->
         <div class="space-y-4 pt-4 border-t border-slate-100">
             <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2">
-                2. Harga & Ketersediaan Stok
+                2. Harga, HPP & Ketersediaan Stok
             </h3>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-slate-700">Harga Jual Normal (Rupiah) *</label>
+                    <label class="block text-xs font-bold text-slate-700">Harga Jual Normal (Rp) *</label>
                     <input 
                         type="number" 
                         name="price" 
@@ -116,13 +129,25 @@ if (!empty($menu['variants_json'])) {
                 </div>
 
                 <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-slate-700">Harga Coret / Sebelum Diskon (Opsional)</label>
+                    <label class="block text-xs font-bold text-slate-700">HPP / Biaya Modal (Rp)</label>
+                    <input 
+                        type="number" 
+                        name="cost_price" 
+                        min="0"
+                        value="<?= e((string)($menu['cost_price'] ?? 0)) ?>"
+                        placeholder="0"
+                        class="w-full text-xs sm:text-sm px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-primary transition font-semibold"
+                    >
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700">Harga Coret (Diskon Promo)</label>
                     <input 
                         type="number" 
                         name="strike_price" 
                         min="0"
                         value="<?= e((string)($menu['strike_price'] ?? '')) ?>"
-                        placeholder="Kosongkan jika tidak ada promo diskon"
+                        placeholder="Kosongkan jika tidak ada diskon"
                         class="w-full text-xs sm:text-sm px-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-primary transition"
                     >
                 </div>
@@ -189,8 +214,9 @@ if (!empty($menu['variants_json'])) {
                         accept="image/jpeg,image/png,image/webp"
                         class="w-full text-xs text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition cursor-pointer border border-slate-200 rounded-2xl p-2 bg-slate-50"
                     >
-                    <p class="text-[11px] text-slate-500">
-                        ⚡ <strong>Otomatisasi Server:</strong> Foto akan di-resize proporsional ke lebar maks 800px dan dikonversi ke format <code>.webp</code> (kualitas 80%) secara otomatis untuk menjaga kecepatan web.
+                    <p class="text-[11px] text-slate-500 flex items-center gap-1 mt-1">
+                        <?= icon('zap', 'w-3.5 h-3.5 text-amber-500 shrink-0') ?>
+                        <span><strong>Otomatisasi Server:</strong> Foto akan di-resize proporsional ke lebar maks 800px dan dikonversi ke format WebP (kualitas 80%) secara otomatis.</span>
                     </p>
                 </div>
             </div>
@@ -207,7 +233,8 @@ if (!empty($menu['variants_json'])) {
                     @click="addOptionGroup()"
                     class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition flex items-center gap-1"
                 >
-                    <span>+ Tambah Grup Varian</span>
+                    <?= icon('plus', 'w-3.5 h-3.5') ?>
+                    <span>Tambah Grup Varian</span>
                 </button>
             </div>
 
@@ -258,7 +285,7 @@ if (!empty($menu['variants_json'])) {
                                         @click="removeChoice(gIdx, cIdx)"
                                         class="text-slate-400 hover:text-rose-500 p-1"
                                     >
-                                        ✕
+                                        <?= icon('x', 'w-3.5 h-3.5') ?>
                                     </button>
                                 </div>
                             </template>

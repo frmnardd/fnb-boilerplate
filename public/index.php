@@ -326,6 +326,11 @@ if ($requestUri === '/admin/menus/create' && $requestMethod === 'POST') {
     $isFeatured = isset($_POST['is_featured']) ? 1 : 0;
     $sortOrder = (int)($_POST['sort_order'] ?? 0);
     $variantsJson = trim($_POST['variants_json'] ?? '');
+    $station = strtoupper(trim($_POST['station'] ?? 'KITCHEN'));
+    if (!in_array($station, ['KITCHEN', 'BAR'], true)) {
+        $station = 'KITCHEN';
+    }
+    $costPrice = (int)($_POST['cost_price'] ?? 0);
     $slug = slugify($name);
 
     if (empty($name) || $categoryId <= 0) {
@@ -347,8 +352,8 @@ if ($requestUri === '/admin/menus/create' && $requestMethod === 'POST') {
 
     $pdo = db();
     $stmt = $pdo->prepare("
-        INSERT INTO menus (category_id, name, slug, description, price, strike_price, image_url, variants_json, is_available, is_featured, sort_order) 
-        VALUES (:category_id, :name, :slug, :description, :price, :strike_price, :image_url, :variants_json, :is_available, :is_featured, :sort_order)
+        INSERT INTO menus (category_id, name, slug, description, price, strike_price, cost_price, station, image_url, variants_json, is_available, is_featured, sort_order) 
+        VALUES (:category_id, :name, :slug, :description, :price, :strike_price, :cost_price, :station, :image_url, :variants_json, :is_available, :is_featured, :sort_order)
     ");
     $stmt->execute([
         'category_id'   => $categoryId,
@@ -357,6 +362,8 @@ if ($requestUri === '/admin/menus/create' && $requestMethod === 'POST') {
         'description'   => $description,
         'price'         => $price,
         'strike_price'  => $strikePrice,
+        'cost_price'    => $costPrice,
+        'station'       => $station,
         'image_url'     => $imageUrl,
         'variants_json' => !empty($variantsJson) ? $variantsJson : null,
         'is_available'  => $isAvailable,
@@ -404,6 +411,11 @@ if ($requestUri === '/admin/menus/edit' && $requestMethod === 'POST') {
     $isFeatured = isset($_POST['is_featured']) ? 1 : 0;
     $sortOrder = (int)($_POST['sort_order'] ?? 0);
     $variantsJson = trim($_POST['variants_json'] ?? '');
+    $station = strtoupper(trim($_POST['station'] ?? 'KITCHEN'));
+    if (!in_array($station, ['KITCHEN', 'BAR'], true)) {
+        $station = 'KITCHEN';
+    }
+    $costPrice = (int)($_POST['cost_price'] ?? 0);
 
     $pdo = db();
     $stmt = $pdo->prepare("SELECT * FROM menus WHERE id = :id");
@@ -433,6 +445,8 @@ if ($requestUri === '/admin/menus/edit' && $requestMethod === 'POST') {
             description = :description,
             price = :price,
             strike_price = :strike_price,
+            cost_price = :cost_price,
+            station = :station,
             image_url = :image_url,
             variants_json = :variants_json,
             is_available = :is_available,
@@ -446,6 +460,8 @@ if ($requestUri === '/admin/menus/edit' && $requestMethod === 'POST') {
         'description'   => $description,
         'price'         => $price,
         'strike_price'  => $strikePrice,
+        'cost_price'    => $costPrice,
+        'station'       => $station,
         'image_url'     => $imageUrl,
         'variants_json' => !empty($variantsJson) ? $variantsJson : null,
         'is_available'  => $isAvailable,
@@ -911,6 +927,123 @@ if ($requestUri === '/admin/inventory/save' && $requestMethod === 'POST') {
     redirect('/admin/inventory');
 }
 
+// Inventory Restock Action (POST /admin/inventory/restock)
+if ($requestUri === '/admin/inventory/restock' && $requestMethod === 'POST') {
+    require_auth();
+    if (!verify_csrf_token()) {
+        flash('error', 'Token CSRF tidak valid.');
+        redirect('/admin/inventory');
+    }
+
+    $id = (int)($_POST['id'] ?? 0);
+    $addAmount = (float)($_POST['add_amount'] ?? 0);
+
+    if ($id > 0 && $addAmount > 0) {
+        $pdo = db();
+        $stmt = $pdo->prepare("UPDATE ingredients SET current_stock = current_stock + :amount WHERE id = :id");
+        $stmt->execute(['amount' => $addAmount, 'id' => $id]);
+        flash('success', 'Stok bahan baku berhasil ditambah.');
+    } else {
+        flash('error', 'Kuantitas restock tidak valid.');
+    }
+
+    redirect('/admin/inventory');
+}
+
+// Inventory CSV Export (GET/POST /admin/inventory/export)
+if ($requestUri === '/admin/inventory/export') {
+    require_auth();
+    $pdo = db();
+    $ingredients = $pdo->query("SELECT sku, name, unit, cost_per_unit, current_stock, min_threshold, is_active FROM ingredients ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $headers = ['SKU', 'Nama Bahan Baku', 'Satuan Unit', 'Harga Beli Satuan (Rp)', 'Stok Saat Ini', 'Batas Minimum', 'Status'];
+    $rows = [];
+    foreach ($ingredients as $ing) {
+        $rows[] = [
+            $ing['sku'],
+            $ing['name'],
+            $ing['unit'],
+            $ing['cost_per_unit'],
+            $ing['current_stock'],
+            $ing['min_threshold'],
+            $ing['is_active'] ? 'Aktif' : 'Non-Aktif',
+        ];
+    }
+    export_csv('inventori-bahan-' . date('Ymd-His') . '.csv', $headers, $rows);
+}
+
+// Business Analytics Overview (GET /admin/analytics)
+if ($requestUri === '/admin/analytics' && $requestMethod === 'GET') {
+    require_auth();
+    require dirname(__DIR__) . '/views/admin/analytics/index.php';
+    exit;
+}
+
+// Dashboard 14-day Stats API for Chart.js (GET /admin/dashboard/stats)
+if ($requestUri === '/admin/dashboard/stats' && $requestMethod === 'GET') {
+    require_auth();
+    $pdo = db();
+    $days = [];
+    for ($i = 13; $i >= 0; $i--) {
+        $d = date('Y-m-d', strtotime("-$i days"));
+        $days[$d] = 0;
+    }
+    try {
+        $stmt = $pdo->query("
+            SELECT DATE(created_at) as order_date, SUM(grand_total) as daily_total
+            FROM orders
+            WHERE payment_status = 'PAID' AND created_at >= date('now', '-14 days')
+            GROUP BY DATE(created_at)
+        ");
+        while ($row = $stmt->fetch()) {
+            if (isset($days[$row['order_date']])) {
+                $days[$row['order_date']] = (int)$row['daily_total'];
+            }
+        }
+    } catch (\Throwable $e) {}
+
+    json_response([
+        'labels' => array_map(fn($d) => date('d M', strtotime($d)), array_keys($days)),
+        'revenues' => array_values($days),
+    ]);
+}
+
+// KDS Smart Polling API (GET /admin/kds/api/orders)
+if ($requestUri === '/admin/kds/api/orders' && $requestMethod === 'GET') {
+    require_auth();
+    $pdo = db();
+    try {
+        $ids = $pdo->query("
+            SELECT id FROM orders 
+            WHERE status IN ('PENDING', 'CONFIRMED', 'COOKING', 'READY')
+            ORDER BY created_at ASC
+        ")->fetchAll(PDO::FETCH_COLUMN);
+        json_response([
+            'success' => true,
+            'order_ids' => array_map('intval', $ids ?: []),
+            'count' => count($ids ?: []),
+        ]);
+    } catch (\Throwable $e) {
+        json_response(['success' => false, 'order_ids' => [], 'count' => 0]);
+    }
+}
+
+// Public Menu JSON API (GET /api/menu)
+if ($requestUri === '/api/menu' && $requestMethod === 'GET') {
+    $pdo = db();
+    $menus = $pdo->query("
+        SELECT m.id, m.name, m.slug, m.description, m.price, m.strike_price, m.image_url, m.station, m.is_available, m.is_featured, c.name as category_name
+        FROM menus m
+        JOIN categories c ON m.category_id = c.id
+        WHERE m.is_available = 1
+        ORDER BY c.sort_order ASC, m.sort_order ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    json_response([
+        'success' => true,
+        'count' => count($menus),
+        'data' => $menus,
+    ]);
+}
+
 // Fallback 404
 http_response_code(404);
 ?>
@@ -923,7 +1056,7 @@ http_response_code(404);
 </head>
 <body class="bg-slate-50 text-slate-800 flex items-center justify-center min-h-screen p-4">
     <div class="text-center space-y-4 max-w-sm">
-        <span class="text-6xl block">☕</span>
+        <div class="flex justify-center text-slate-400"><?= icon('coffee', 'w-16 h-16') ?></div>
         <h1 class="text-2xl font-black text-slate-900">404 - Halaman Tidak Ditemukan</h1>
         <p class="text-xs text-slate-500">Halaman yang Anda tuju mungkin telah dipindahkan atau tautan yang Anda klik tidak tepat.</p>
         <a href="/" class="inline-block px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs shadow hover:bg-slate-800 transition">

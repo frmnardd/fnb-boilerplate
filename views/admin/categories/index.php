@@ -3,10 +3,11 @@ declare(strict_types=1);
 
 /**
  * FnB Boilerplate - Category Management View
+ * Professional Edition: 100% Emoji-Free. Powered by Lucide SVG Icons.
  */
 
 $title = 'Kategori Menu';
-$subtitle = 'Kelola kategori menu (Kopi, Makanan Utama, Camilan, dsb.)';
+$subtitle = 'Kelola kategori hidangan (Kopi, Makanan Utama, Camilan, dsb.)';
 require dirname(__DIR__) . '/layout/header.php';
 
 $pdo = db();
@@ -21,10 +22,13 @@ $categories = $pdo->query("
 
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" x-data="{ editMode: false, currentCategory: { id: '', name: '', sort_order: 0, is_active: 1 } }">
     
-    <!-- Table of Categories (Col 8) -->
+    <!-- Table of Categories (Col 7) -->
     <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex items-center justify-between">
-            <h2 class="text-base font-extrabold text-slate-900">Daftar Kategori</h2>
+            <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <?= icon('tag', 'w-5 h-5 text-primary') ?>
+                <span>Daftar Kategori</span>
+            </h2>
             <span class="text-xs text-slate-400 font-semibold"><?= count($categories) ?> Total Kategori</span>
         </div>
 
@@ -58,10 +62,11 @@ $categories = $pdo->query("
                                     <button 
                                         type="button"
                                         @click="editMode = true; currentCategory = { id: '<?= $cat['id'] ?>', name: '<?= addslashes($cat['name']) ?>', sort_order: <?= (int)$cat['sort_order'] ?>, is_active: <?= (int)$cat['is_active'] ?> }"
-                                        class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
+                                        class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition inline-flex items-center gap-1"
                                         title="Edit Kategori"
                                     >
-                                        ✏️ Edit
+                                        <?= icon('edit', 'w-3.5 h-3.5') ?>
+                                        <span>Edit</span>
                                     </button>
 
                                     <?php if (($user['role'] ?? '') === 'admin'): ?>
@@ -78,7 +83,7 @@ $categories = $pdo->query("
                                                 class="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold transition"
                                                 title="Hapus Kategori"
                                             >
-                                                🗑️
+                                                <?= icon('trash-2', 'w-3.5 h-3.5') ?>
                                             </button>
                                         </form>
                                     <?php endif; ?>

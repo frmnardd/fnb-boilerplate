@@ -2,12 +2,15 @@
 declare(strict_types=1);
 
 /**
- * FnB Boilerplate - Kitchen Display System (KDS) & Bar Display
- * High-Contrast Dark Interface for Kitchen Tablets & Wall Monitors
+ * FnB Boilerplate - Kitchen Display System (KDS) & Bar Display (Professional Edition)
+ * High-Contrast Dark Interface for Kitchen Tablets & Wall Monitors.
+ * 100% Emoji-Free. Powered by Lucide SVG Icons & Web Audio API Synthesizer.
  */
 
 start_session_safe();
 require_auth();
+
+require_once dirname(__DIR__, 3) . '/config/icons.php';
 
 $settings = get_setting();
 $pdo = db();
@@ -23,12 +26,14 @@ $ordersQuery = $pdo->query("
 
 // Attach items to each order
 $orders = [];
+$orderIdsList = [];
 foreach ($ordersQuery as $ord) {
     $stmtItems = $pdo->prepare("SELECT * FROM order_items WHERE order_id = :order_id ORDER BY id ASC");
     $stmtItems->execute(['order_id' => $ord['id']]);
     $ord['items'] = $stmtItems->fetchAll();
     $ord['elapsed_seconds'] = time() - strtotime($ord['created_at']);
     $orders[] = $ord;
+    $orderIdsList[] = (int)$ord['id'];
 }
 ?>
 <!DOCTYPE html>
@@ -39,12 +44,20 @@ foreach ($ordersQuery as $ord) {
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title>Kitchen Display System (KDS) - <?= e($settings['site_name'] ?? 'FnB Resto') ?></title>
     
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'Inter', 'sans-serif'],
+                    },
                     colors: {
                         primary: '<?= e($settings['primary_color'] ?? '#FF6B35') ?>',
                     }
@@ -64,8 +77,8 @@ foreach ($ordersQuery as $ord) {
     <!-- Top Navigation Header -->
     <header class="h-16 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-4">
-            <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white font-black text-lg shadow-md shadow-primary/20">
-                👨‍🍳
+            <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white shadow-md shadow-primary/20 shrink-0">
+                <?= icon('chef-hat', 'w-5 h-5') ?>
             </div>
             <div>
                 <h1 class="text-base font-extrabold text-white tracking-wide">
@@ -76,6 +89,8 @@ foreach ($ordersQuery as $ord) {
                     <span>Sinkronisasi Realtime Aktif</span>
                     <span>•</span>
                     <span x-text="clockTime" class="tabular-nums font-mono font-bold text-slate-300"></span>
+                    <span>•</span>
+                    <span class="text-slate-400"><strong class="text-white"><?= count($orders) ?></strong> Antrean</span>
                 </div>
             </div>
         </div>
@@ -86,23 +101,26 @@ foreach ($ordersQuery as $ord) {
                 <button 
                     @click="activeStation = 'ALL'" 
                     :class="activeStation === 'ALL' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white'"
-                    class="px-3.5 py-1.5 rounded-lg text-xs transition"
+                    class="px-3.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5"
                 >
-                    Semua Stasiun
+                    <?= icon('layout-dashboard', 'w-3.5 h-3.5') ?>
+                    <span>Semua Stasiun</span>
                 </button>
                 <button 
                     @click="activeStation = 'KITCHEN'" 
                     :class="activeStation === 'KITCHEN' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'"
-                    class="px-3.5 py-1.5 rounded-lg text-xs transition"
+                    class="px-3.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5"
                 >
-                    🍲 Dapur (Kitchen)
+                    <?= icon('utensils', 'w-3.5 h-3.5') ?>
+                    <span>Dapur (Kitchen)</span>
                 </button>
                 <button 
                     @click="activeStation = 'BAR'" 
                     :class="activeStation === 'BAR' ? 'bg-cyan-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'"
-                    class="px-3.5 py-1.5 rounded-lg text-xs transition"
+                    class="px-3.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5"
                 >
-                    ☕ Barista / Minuman
+                    <?= icon('coffee', 'w-3.5 h-3.5') ?>
+                    <span>Barista / Bar</span>
                 </button>
             </div>
 
@@ -113,7 +131,23 @@ foreach ($ordersQuery as $ord) {
                 class="px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5"
                 title="Aktifkan/Nonaktifkan Notifikasi Suara"
             >
-                <span x-text="audioEnabled ? '🔔 Suara ON' : '🔕 Suara OFF'"></span>
+                <span x-show="audioEnabled" class="flex items-center gap-1">
+                    <?= icon('bell', 'w-3.5 h-3.5') ?>
+                    <span>Suara Aktif</span>
+                </span>
+                <span x-show="!audioEnabled" x-cloak class="flex items-center gap-1">
+                    <?= icon('bell-off', 'w-3.5 h-3.5') ?>
+                    <span>Suara Senyap</span>
+                </span>
+            </button>
+
+            <!-- Manual Refresh Button -->
+            <button 
+                @click="manualRefresh()" 
+                class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                title="Muat Ulang Layar"
+            >
+                <?= icon('refresh-cw', 'w-4 h-4') ?>
             </button>
 
             <!-- Exit / Back to Admin -->
@@ -132,8 +166,10 @@ foreach ($ordersQuery as $ord) {
 
             <?php if (empty($orders)): ?>
                 <div class="m-auto text-center py-24">
-                    <span class="text-6xl block mb-4">✨</span>
-                    <h2 class="text-2xl font-bold text-slate-300">Semua Tiket Masak Selesai!</h2>
+                    <div class="w-16 h-16 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-500 mx-auto mb-4">
+                        <?= icon('check-circle', 'w-8 h-8') ?>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-300">Semua Tiket Masak Selesai</h2>
                     <p class="text-sm text-slate-500 mt-1">Belum ada pesanan aktif yang menunggu di dapur atau bar.</p>
                 </div>
             <?php endif; ?>
@@ -142,7 +178,9 @@ foreach ($ordersQuery as $ord) {
                 <?php
                 $aging = (int)$order['elapsed_seconds'];
                 $agingColor = get_ticket_aging_color($aging);
-                $cardBorderClass = ($agingColor === 'rose') ? 'border-rose-500/60 shadow-lg shadow-rose-950/50' : (($agingColor === 'amber') ? 'border-amber-500/50' : 'border-slate-800');
+                $cardBorderClass = ($agingColor === 'rose') 
+                    ? 'border-rose-500/60 shadow-lg shadow-rose-950/50 ring-1 ring-rose-500/30' 
+                    : (($agingColor === 'amber') ? 'border-amber-500/50 shadow-md shadow-amber-950/30' : 'border-slate-800');
                 ?>
                 <div 
                     x-show="filterOrder(<?= json_encode($order['items']) ?>)" 
@@ -166,10 +204,11 @@ foreach ($ordersQuery as $ord) {
 
                         <!-- Aging SLA Timer Badge -->
                         <div class="text-right">
-                            <span class="px-2.5 py-1 rounded-xl text-xs font-black font-mono tabular-nums <?= $agingColor === 'rose' ? 'bg-rose-500 text-white animate-pulse' : ($agingColor === 'amber' ? 'bg-amber-500 text-slate-950' : 'bg-emerald-500 text-slate-950') ?>">
-                                ⏱ <?= format_ticket_aging($aging) ?>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-black font-mono tabular-nums <?= $agingColor === 'rose' ? 'bg-rose-500 text-white animate-pulse' : ($agingColor === 'amber' ? 'bg-amber-500 text-slate-950' : 'bg-emerald-500 text-slate-950') ?>">
+                                <?= icon('timer', 'w-3 h-3') ?>
+                                <span><?= format_ticket_aging($aging) ?></span>
                             </span>
-                            <span class="text-[10px] text-slate-400 block mt-0.5"><?= e($order['customer_name']) ?></span>
+                            <span class="text-[10px] text-slate-400 block mt-0.5"><?= e($order['customer_name'] ?? 'Tamu') ?></span>
                         </div>
                     </div>
 
@@ -196,14 +235,16 @@ foreach ($ordersQuery as $ord) {
                                         </div>
 
                                         <?php if (!empty($item['variants_selected'])): ?>
-                                            <div class="mt-1 text-xs text-amber-300 font-medium pl-8">
-                                                ✨ <?= e($item['variants_selected']) ?>
+                                            <div class="mt-1 text-xs text-amber-300 font-medium pl-8 flex items-center gap-1">
+                                                <?= icon('tag', 'w-3 h-3') ?>
+                                                <span><?= e($item['variants_selected']) ?></span>
                                             </div>
                                         <?php endif; ?>
 
                                         <?php if (!empty($item['notes'])): ?>
-                                            <div class="mt-1 text-xs text-rose-300 font-semibold italic pl-8">
-                                                ⚠️ <?= e($item['notes']) ?>
+                                            <div class="mt-1 text-xs text-rose-300 font-semibold italic pl-8 flex items-center gap-1">
+                                                <?= icon('alert-triangle', 'w-3 h-3') ?>
+                                                <span><?= e($item['notes']) ?></span>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -211,9 +252,16 @@ foreach ($ordersQuery as $ord) {
                                     <!-- Single Item Bump Button -->
                                     <button 
                                         @click="bumpItem(<?= $item['id'] ?>, '<?= $item['item_status'] ?>')" 
-                                        class="shrink-0 px-2.5 py-1.5 rounded-xl text-xs font-black transition <?= $isDone ? 'bg-emerald-600 text-white' : ($isCooking ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700') ?>"
+                                        class="shrink-0 px-2.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1 <?= $isDone ? 'bg-emerald-600 text-white' : ($isCooking ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700') ?>"
                                     >
-                                        <?= $isDone ? '✓ Siap' : ($isCooking ? 'Sedang Masak' : 'Mulai') ?>
+                                        <?php if ($isDone): ?>
+                                            <?= icon('check', 'w-3.5 h-3.5') ?>
+                                            <span>Siap</span>
+                                        <?php elseif ($isCooking): ?>
+                                            <span>Sedang Masak</span>
+                                        <?php else: ?>
+                                            <span>Mulai</span>
+                                        <?php endif; ?>
                                     </button>
                                 </div>
                             </div>
@@ -228,9 +276,9 @@ foreach ($ordersQuery as $ord) {
 
                         <button 
                             @click="bumpOrder(<?= $order['id'] ?>)" 
-                            class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition shadow-md shadow-emerald-500/20 flex items-center gap-1.5"
+                            class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition shadow-md shadow-emerald-500/20 flex items-center gap-1.5"
                         >
-                            <span>✓</span>
+                            <?= icon('check', 'w-4 h-4') ?>
                             <span>Selesaikan Tiket</span>
                         </button>
                     </div>
@@ -240,7 +288,7 @@ foreach ($ordersQuery as $ord) {
         </div>
     </main>
 
-    <!-- KDS Alpine Logic & Audio Synthesizer -->
+    <!-- KDS Alpine Logic & Polling -->
     <script>
         function kdsSystem() {
             return {
@@ -248,19 +296,45 @@ foreach ($ordersQuery as $ord) {
                 audioEnabled: true,
                 clockTime: '',
                 audioCtx: null,
+                knownOrderIds: <?= json_encode($orderIdsList) ?>,
 
                 init() {
                     this.updateClock();
                     setInterval(() => this.updateClock(), 1000);
-                    // Polling auto-refresh every 10 seconds
-                    setInterval(() => {
-                        window.location.reload();
-                    }, 10000);
+
+                    // Smart polling every 6 seconds to avoid jarring full page flash
+                    setInterval(() => this.checkNewOrders(), 6000);
                 },
 
                 updateClock() {
                     const now = new Date();
                     this.clockTime = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                },
+
+                async checkNewOrders() {
+                    try {
+                        const res = await fetch('/admin/kds/api/orders');
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        const newIds = data.order_ids || [];
+
+                        // Compare newIds with knownOrderIds
+                        const hasDifference = newIds.length !== this.knownOrderIds.length || 
+                            !newIds.every(id => this.knownOrderIds.includes(id));
+
+                        if (hasDifference) {
+                            if (newIds.length > this.knownOrderIds.length) {
+                                this.playChime(440, 880); // Alert chime on new ticket
+                            }
+                            window.location.reload();
+                        }
+                    } catch (e) {
+                        // ignore network glitches
+                    }
+                },
+
+                manualRefresh() {
+                    window.location.reload();
                 },
 
                 toggleAudio() {
@@ -299,7 +373,7 @@ foreach ($ordersQuery as $ord) {
                         osc1.stop(this.audioCtx.currentTime + 0.3);
                         osc2.stop(this.audioCtx.currentTime + 0.6);
                     } catch (e) {
-                        console.error('Audio not supported:', e);
+                        console.error('Audio synthesizer not supported:', e);
                     }
                 },
 

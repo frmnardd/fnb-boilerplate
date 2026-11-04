@@ -2,13 +2,14 @@
 declare(strict_types=1);
 
 /**
- * FnB Boilerplate - Web-to-WhatsApp Cart Drawer & Floating CTA Button
- * Zero-commission ordering system stored in localStorage with WhatsApp deep-link formatting.
+ * FnB Boilerplate - Customer Cart Drawer Component (Alpine.js Powered)
+ * Supports Dine-In (Table Auto-Detection), Pickup, and Delivery to WhatsApp.
+ * Professional Edition: 100% Emoji-Free. Powered by Lucide SVG Icons.
  */
 
 $settings = get_setting();
-$waOrderNumber = $settings['whatsapp_order_number'] ?? '6281234567890';
-$siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
+$waOrderNumber = $settings['whatsapp_order_number'] ?? '';
+$siteName = $settings['site_name'] ?? 'FnB Resto';
 ?>
 
 <!-- 1. Floating WhatsApp Cart Button (Bottom Right) -->
@@ -24,9 +25,7 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
     >
         <div class="relative">
             <!-- Shopping Cart Icon -->
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-            </svg>
+            <?= icon('shopping-cart', 'w-6 h-6') ?>
             <span 
                 x-text="$store.cart.getTotalCount()" 
                 class="absolute -top-2.5 -right-3 bg-amber-400 text-slate-900 text-xs font-black px-1.5 py-0.5 rounded-full border-2 border-emerald-600 shadow"
@@ -44,6 +43,7 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
     x-cloak 
     x-show="$store.cart.isOpen" 
     class="fixed inset-0 z-50 overflow-hidden" 
+    aria-labelledby="cart-drawer-title"
     role="dialog" 
     aria-modal="true"
 >
@@ -63,10 +63,10 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
     <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
         <div 
             x-show="$store.cart.isOpen"
-            x-transition:enter="transform transition ease-in-out duration-300"
+            x-transition:enter="transform transition ease-in-out duration-300 sm:duration-500"
             x-transition:enter-start="translate-x-full"
             x-transition:enter-end="translate-x-0"
-            x-transition:leave="transform transition ease-in-out duration-300"
+            x-transition:leave="transform transition ease-in-out duration-300 sm:duration-500"
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="translate-x-full"
             class="w-screen max-w-md bg-white shadow-2xl flex flex-col"
@@ -75,10 +75,10 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
             <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold text-lg">
-                        🛒
+                        <?= icon('shopping-cart', 'w-5 h-5') ?>
                     </div>
                     <div>
-                        <h2 class="text-lg font-bold text-white tracking-tight">Keranjang Pesanan</h2>
+                        <h2 class="text-lg font-bold text-white tracking-tight" id="cart-drawer-title">Keranjang Pesanan</h2>
                         <p class="text-xs text-slate-400">
                             <span x-text="$store.cart.getTotalCount()"></span> item dipilih
                         </p>
@@ -98,9 +98,7 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
                         @click="$store.cart.closeDrawer()"
                         class="p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition"
                     >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
+                        <?= icon('x', 'w-5 h-5') ?>
                     </button>
                 </div>
             </div>
@@ -109,8 +107,8 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
             <div class="flex-1 overflow-y-auto p-6 space-y-6">
                 <!-- Empty State -->
                 <div x-show="$store.cart.items.length === 0" class="text-center py-16 space-y-4">
-                    <div class="w-20 h-20 mx-auto rounded-3xl bg-amber-50 text-amber-500 flex items-center justify-center text-4xl shadow-inner">
-                        🍲
+                    <div class="w-20 h-20 mx-auto rounded-3xl bg-amber-50 text-amber-500 flex items-center justify-center shadow-inner">
+                        <?= icon('utensils', 'w-10 h-10') ?>
                     </div>
                     <div>
                         <h3 class="text-base font-bold text-slate-900">Keranjang Masih Kosong</h3>
@@ -119,74 +117,75 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
                         </p>
                     </div>
                     <button 
-                        @click="$store.cart.closeDrawer()"
-                        class="inline-block text-xs font-bold px-4 py-2.5 rounded-xl bg-primary text-white shadow hover:opacity-90 transition"
+                        @click="$store.cart.closeDrawer()" 
+                        class="px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-md shadow-primary/20 hover:opacity-90 transition"
                     >
-                        Lihat Katalog Menu
+                        Jelajahi Menu
                     </button>
                 </div>
 
                 <!-- Items List -->
                 <div x-show="$store.cart.items.length > 0" class="space-y-4">
-                    <template x-for="(item, idx) in $store.cart.items" :key="idx">
-                        <div class="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 space-y-3 relative group hover:border-slate-300 transition">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="flex-1">
-                                    <h4 class="text-sm font-bold text-slate-900 leading-snug" x-text="item.name"></h4>
-                                    
-                                    <!-- Selected Variants Pill Tags -->
-                                    <template x-if="item.variants && item.variants.length > 0">
-                                        <div class="flex flex-wrap gap-1 mt-1.5">
-                                            <template x-for="(v, vIdx) in item.variants" :key="vIdx">
-                                                <span class="inline-block text-[10px] font-semibold bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
-                                                    <span x-text="v.name"></span>
-                                                    <span x-show="v.extra_price > 0" class="text-primary font-bold" x-text="'+' + $store.cart.formatRupiah(v.extra_price)"></span>
-                                                </span>
-                                            </template>
-                                        </div>
-                                    </template>
+                    <template x-for="item in $store.cart.items" :key="item.cart_item_id">
+                        <div class="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 flex gap-4 transition hover:bg-slate-50">
+                            <!-- Thumbnail -->
+                            <img 
+                                :src="item.image_url || '/assets/images/food-menu-1.png'" 
+                                :alt="item.name"
+                                class="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
+                            >
 
-                                    <!-- Notes Preview -->
-                                    <p x-show="item.notes" class="text-[11px] text-slate-500 italic mt-1 bg-white/80 px-2 py-1 rounded border border-slate-100" x-text="'Catatan: ' + item.notes"></p>
+                            <!-- Content -->
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-2">
+                                    <h4 class="text-xs sm:text-sm font-extrabold text-slate-900 truncate" x-text="item.name"></h4>
+                                    <button 
+                                        @click="$store.cart.removeItem(item.cart_item_id)"
+                                        class="text-slate-400 hover:text-rose-500 p-0.5" 
+                                        title="Hapus Item"
+                                    >
+                                        <?= icon('x', 'w-4 h-4') ?>
+                                    </button>
                                 </div>
 
-                                <!-- Remove Button -->
-                                <button 
-                                    @click="$store.cart.removeItem(idx)"
-                                    class="text-slate-400 hover:text-red-500 p-1 transition"
-                                    title="Hapus item"
-                                >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                </button>
-                            </div>
+                                <!-- Variants List (If Any) -->
+                                <template x-if="item.selected_variants && Object.keys(item.selected_variants).length > 0">
+                                    <div class="text-[11px] text-slate-500 mt-0.5">
+                                        <template x-for="(choice, group) in item.selected_variants" :key="group">
+                                            <span class="inline-block mr-1">
+                                                <strong x-text="group + ':'"></strong> <span x-text="choice"></span>;
+                                            </span>
+                                        </template>
+                                    </div>
+                                </template>
 
-                            <!-- Price & Qty Stepper -->
-                            <div class="flex items-center justify-between pt-2 border-t border-slate-200/60">
-                                <span class="text-sm font-extrabold text-slate-900" x-text="$store.cart.formatRupiah(item.unit_price * item.qty)"></span>
-                                <div class="flex items-center gap-2">
-                                    <button 
-                                        @click="$store.cart.updateQty(idx, -1)"
-                                        class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold flex items-center justify-center hover:bg-slate-100 transition text-xs shadow-sm"
-                                    >-</button>
-                                    <span class="font-bold text-xs w-6 text-center" x-text="item.qty"></span>
-                                    <button 
-                                        @click="$store.cart.updateQty(idx, 1)"
-                                        class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold flex items-center justify-center hover:bg-slate-100 transition text-xs shadow-sm"
-                                    >+</button>
+                                <!-- Unit Price & Qty Controls -->
+                                <div class="flex items-center justify-between mt-3">
+                                    <span class="text-xs sm:text-sm font-black text-slate-900" x-text="$store.cart.formatRupiah(item.calculated_price)"></span>
+
+                                    <!-- Qty Control Pill -->
+                                    <div class="flex items-center gap-2 border border-slate-200 bg-white rounded-xl px-2 py-1">
+                                        <button 
+                                            @click="$store.cart.decrementQuantity(item.cart_item_id)"
+                                            class="w-5 h-5 flex items-center justify-center rounded text-slate-600 hover:text-slate-900 font-bold"
+                                        >-</button>
+                                        <span class="text-xs font-bold text-slate-900 min-w-[1rem] text-center" x-text="item.quantity"></span>
+                                        <button 
+                                            @click="$store.cart.incrementQuantity(item.cart_item_id)"
+                                            class="w-5 h-5 flex items-center justify-center rounded text-slate-600 hover:text-slate-900 font-bold"
+                                        >+</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </template>
                 </div>
 
-                <!-- Order Type & Customer Form -->
-                <div x-show="$store.cart.items.length > 0" class="pt-4 border-t border-slate-200 space-y-4">
+                <!-- Order Type & Customer Details Form (Shown if cart has items) -->
+                <div x-show="$store.cart.items.length > 0" class="space-y-4 pt-4 border-t border-slate-100">
+                    <!-- Order Type Selector -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
-                            Pilih Tipe Pesanan:
-                        </label>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Tipe Pemesanan</label>
                         <div class="grid grid-cols-3 gap-2">
                             <button 
                                 type="button"
@@ -194,7 +193,7 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
                                 :class="$store.cart.orderType === 'dine_in' ? 'border-primary bg-primary/10 text-primary font-bold' : 'border-slate-200 text-slate-600 hover:border-slate-300'"
                                 class="py-2.5 px-2 rounded-xl border text-xs text-center transition flex flex-col items-center gap-1"
                             >
-                                <span class="text-base">🍽️</span>
+                                <?= icon('utensils', 'w-4 h-4') ?>
                                 <span>Dine-In</span>
                             </button>
                             <button 
@@ -203,7 +202,7 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
                                 :class="$store.cart.orderType === 'pickup' ? 'border-primary bg-primary/10 text-primary font-bold' : 'border-slate-200 text-slate-600 hover:border-slate-300'"
                                 class="py-2.5 px-2 rounded-xl border text-xs text-center transition flex flex-col items-center gap-1"
                             >
-                                <span class="text-base">🛍️</span>
+                                <?= icon('package', 'w-4 h-4') ?>
                                 <span>Pickup</span>
                             </button>
                             <button 
@@ -212,7 +211,7 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
                                 :class="$store.cart.orderType === 'delivery' ? 'border-primary bg-primary/10 text-primary font-bold' : 'border-slate-200 text-slate-600 hover:border-slate-300'"
                                 class="py-2.5 px-2 rounded-xl border text-xs text-center transition flex flex-col items-center gap-1"
                             >
-                                <span class="text-base">🛵</span>
+                                <?= icon('map-pin', 'w-4 h-4') ?>
                                 <span>Delivery</span>
                             </button>
                         </div>
@@ -231,104 +230,96 @@ $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
                             >
                         </div>
 
-                        <!-- Dine-In Fields -->
-                        <div x-show="$store.cart.orderType === 'dine_in'" class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 mb-1">Nomor Meja *</label>
-                                <input 
-                                    type="text" 
-                                    x-model="$store.cart.customer.table" 
-                                    placeholder="Contoh: Meja 05"
-                                    class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-primary"
-                                >
-                            </div>
+                        <!-- Table Number (For Dine-In) -->
+                        <div x-show="$store.cart.orderType === 'dine_in'">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                Nomor Meja (Auto-Detect QR)
+                            </label>
+                            <input 
+                                type="text" 
+                                x-model="$store.cart.customer.table_number" 
+                                placeholder="Contoh: 04 / VIP-1"
+                                class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-primary font-bold"
+                            >
                         </div>
 
-                        <!-- Pickup Fields -->
-                        <div x-show="$store.cart.orderType === 'pickup'" class="space-y-3">
+                        <!-- Pickup Notes (For Pickup) -->
+                        <div x-show="$store.cart.orderType === 'pickup'">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Rencana Jam Ambil</label>
+                            <input 
+                                type="text" 
+                                x-model="$store.cart.customer.pickup_time" 
+                                placeholder="Contoh: Sekitar jam 14.30 WIB"
+                                class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-primary"
+                            >
+                        </div>
+
+                        <!-- Delivery Address & Phone (For Delivery) -->
+                        <div x-show="$store.cart.orderType === 'delivery'" class="space-y-3">
                             <div>
-                                <label class="block text-xs font-semibold text-slate-700 mb-1">Estimasi Jam Ambil</label>
-                                <input 
-                                    type="time" 
-                                    x-model="$store.cart.customer.pickupTime" 
-                                    class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-primary"
-                                >
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 mb-1">No WhatsApp Pemesan</label>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">No. WhatsApp Aktif *</label>
                                 <input 
                                     type="tel" 
                                     x-model="$store.cart.customer.phone" 
-                                    placeholder="0812xxxxxxxx"
+                                    placeholder="Contoh: 081234567890"
                                     class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-primary"
                                 >
                             </div>
-                        </div>
-
-                        <!-- Delivery Fields -->
-                        <div x-show="$store.cart.orderType === 'delivery'" class="space-y-3">
                             <div>
-                                <label class="block text-xs font-semibold text-slate-700 mb-1">Alamat Lengkap Pengantaran *</label>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Alamat Lengkap Pengiriman *</label>
                                 <textarea 
+                                    rows="2" 
                                     x-model="$store.cart.customer.address" 
-                                    rows="2"
-                                    placeholder="Jl. Raya No. ..., Patokan pagar putih..."
+                                    placeholder="Jalan, Nomor Rumah, Patokan..."
                                     class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-primary"
                                 ></textarea>
                             </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 mb-1">No WhatsApp Pemesan</label>
-                                <input 
-                                    type="tel" 
-                                    x-model="$store.cart.customer.phone" 
-                                    placeholder="0812xxxxxxxx"
-                                    class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-primary"
-                                >
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 mb-1">Catatan Kurir (Opsional)</label>
-                                <input 
-                                    type="text" 
-                                    x-model="$store.cart.customer.notes" 
-                                    placeholder="Titip di pos satpam / hubungi saat tiba"
-                                    class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-primary"
-                                >
-                            </div>
+                        </div>
+
+                        <!-- General Order Notes -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Catatan Pesanan (Opsional)</label>
+                            <input 
+                                type="text" 
+                                x-model="$store.cart.customer.notes" 
+                                placeholder="Contoh: Jangan terlalu manis, es dipisah"
+                                class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-primary"
+                            >
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Drawer Footer (Subtotal & WhatsApp CTA) -->
+            <!-- Drawer Footer (Subtotal & WhatsApp Direct Checkout) -->
             <div x-show="$store.cart.items.length > 0" class="p-6 bg-slate-50 border-t border-slate-200 space-y-4">
-                <div class="space-y-1.5">
-                    <div class="flex items-center justify-between text-xs text-slate-500">
-                        <span>Subtotal Produk</span>
-                        <span x-text="$store.cart.formatRupiah($store.cart.getSubtotal())"></span>
+                <!-- Cost Breakdown -->
+                <div class="space-y-1.5 text-xs text-slate-600">
+                    <div class="flex justify-between">
+                        <span>Subtotal Produk:</span>
+                        <span class="font-bold text-slate-900" x-text="$store.cart.formatRupiah($store.cart.getSubtotal())"></span>
                     </div>
-                    <div class="flex items-center justify-between text-xs text-slate-500">
-                        <span>Biaya Layanan / Komisi Aplikasi</span>
-                        <span class="text-emerald-600 font-bold">Rp 0 (Hemat 100%)</span>
+                    <div class="flex justify-between text-slate-400">
+                        <span>Ongkos Kirim:</span>
+                        <span class="italic" x-text="$store.cart.orderType === 'delivery' ? 'Dihitung kurir kasir' : 'Gratis'"></span>
                     </div>
-                    <div class="flex items-center justify-between text-base font-black text-slate-900 pt-2 border-t border-slate-200">
-                        <span>Total Bayar</span>
-                        <span class="text-primary text-xl" x-text="$store.cart.formatRupiah($store.cart.getSubtotal())"></span>
+                    <div class="flex justify-between text-sm sm:text-base font-black text-slate-900 pt-2 border-t border-slate-200">
+                        <span>Total Sementara:</span>
+                        <span class="text-primary" x-text="$store.cart.formatRupiah($store.cart.getSubtotal())"></span>
                     </div>
                 </div>
 
-                <!-- Big High-Conversion WhatsApp Checkout Button -->
+                <!-- Send to WhatsApp Button -->
                 <button 
                     type="button"
                     @click="$store.cart.sendWhatsAppOrder('<?= e($waOrderNumber) ?>', '<?= e($siteName) ?>')"
                     class="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm sm:text-base shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 transition active:scale-98"
                 >
-                    <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
-                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                    </svg>
+                    <?= icon('whatsapp', 'w-6 h-6') ?>
                     <span>Pesan Sekarang via WhatsApp</span>
                 </button>
-                <p class="text-[11px] text-center text-slate-500">
-                    🔒 Terhubung langsung ke WhatsApp Kasir / Cabang resmi tanpa perantara.
+                <p class="text-[11px] text-center text-slate-500 flex items-center justify-center gap-1">
+                    <?= icon('shield-check', 'w-3.5 h-3.5 text-emerald-600 shrink-0') ?>
+                    <span>Terhubung langsung ke WhatsApp Kasir / Cabang resmi tanpa perantara.</span>
                 </p>
             </div>
         </div>

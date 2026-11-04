@@ -4,6 +4,7 @@ declare(strict_types=1);
 /**
  * FnB Boilerplate - Master Header Layout
  * Dynamic Theme Engine (CSS Variables), Pixel Scripts & Responsive Navigation.
+ * Professional Edition: 100% Emoji-Free. Powered by Lucide SVG Icons.
  */
 
 $settings = get_setting();
@@ -24,7 +25,7 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS (Play CDN with dynamic theme config) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -33,7 +34,7 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Outfit', 'Rubik', 'sans-serif'],
+                        sans: ['Outfit', 'Inter', 'sans-serif'],
                     },
                     colors: {
                         primary: 'var(--color-primary)',
@@ -104,7 +105,7 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
     <?php if (!empty($settings['is_announcement_active']) && !empty($settings['announcement_text'])): ?>
     <aside class="bg-primary text-white text-xs md:text-sm font-semibold py-2 px-4 shadow-sm relative z-40 transition" aria-label="Pengumuman Penting">
         <div class="max-w-7xl mx-auto flex items-center justify-center text-center gap-2">
-            <span class="inline-block animate-bounce">📢</span>
+            <?= icon('bell', 'w-4 h-4 text-white shrink-0') ?>
             <span><?= e($settings['announcement_text']) ?></span>
         </div>
     </aside>
@@ -117,7 +118,7 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
                 <!-- Brand Logo & Title -->
                 <a href="/" class="flex items-center gap-3 group">
                     <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
-                        <span class="text-2xl font-bold">☕</span>
+                        <?= icon('utensils', 'w-6 h-6 text-white') ?>
                     </div>
                     <div>
                         <span class="text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-primary transition-colors block leading-tight">
@@ -156,9 +157,7 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
                         class="relative inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-primary text-white text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
                         aria-label="Keranjang Belanja"
                     >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                        </svg>
+                        <?= icon('shopping-cart', 'w-5 h-5') ?>
                         <span class="hidden sm:inline">Keranjang</span>
                         <span 
                             x-show="$store.cart.getTotalCount() > 0" 
@@ -173,12 +172,8 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
                         class="md:hidden p-2.5 rounded-xl bg-slate-100 text-slate-700 hover:text-primary hover:bg-slate-200 transition"
                         aria-label="Toggle Mobile Menu"
                     >
-                        <svg x-show="!mobileMenu" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/>
-                        </svg>
-                        <svg x-show="mobileMenu" x-cloak class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
+                        <span x-show="!mobileMenu"><?= icon('menu', 'w-6 h-6') ?></span>
+                        <span x-show="mobileMenu" x-cloak><?= icon('x', 'w-6 h-6') ?></span>
                     </button>
                 </div>
             </div>
@@ -197,24 +192,30 @@ $secondaryColor = $settings['secondary_color'] ?? '#1E293B';
             @click.away="mobileMenu = false"
             class="md:hidden border-t border-slate-100 bg-white/95 px-4 pt-3 pb-6 space-y-2 shadow-xl"
         >
-            <a @click="mobileMenu = false" href="#home" class="block px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
-                🏠 Beranda
+            <a @click="mobileMenu = false" href="#home" class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
+                <?= icon('layout-dashboard', 'w-4 h-4 text-slate-500') ?>
+                <span>Beranda</span>
             </a>
-            <a @click="mobileMenu = false" href="#promos" class="block px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
-                🏷️ Promo Spesial
+            <a @click="mobileMenu = false" href="#promos" class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
+                <?= icon('tag', 'w-4 h-4 text-slate-500') ?>
+                <span>Promo Spesial</span>
             </a>
-            <a @click="mobileMenu = false" href="#food-menu" class="block px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
-                📋 Katalog Menu
+            <a @click="mobileMenu = false" href="#food-menu" class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
+                <?= icon('book-open', 'w-4 h-4 text-slate-500') ?>
+                <span>Katalog Menu</span>
             </a>
-            <a @click="mobileMenu = false" href="#franchise" class="block px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
-                💼 Kemitraan & ROI
+            <a @click="mobileMenu = false" href="#franchise" class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
+                <?= icon('trending-up', 'w-4 h-4 text-slate-500') ?>
+                <span>Kemitraan & ROI</span>
             </a>
-            <a @click="mobileMenu = false" href="#outlets" class="block px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
-                📍 Lokasi Cabang
+            <a @click="mobileMenu = false" href="#outlets" class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-primary/10 hover:text-primary transition">
+                <?= icon('map-pin', 'w-4 h-4 text-slate-500') ?>
+                <span>Lokasi Cabang</span>
             </a>
             <div class="pt-2">
                 <a href="<?= format_whatsapp_url($settings['whatsapp_order_number'] ?? '', 'Halo, saya ingin bertanya tentang menu') ?>" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow hover:bg-emerald-700 transition">
-                    💬 Hubungi WhatsApp CS
+                    <?= icon('whatsapp', 'w-4 h-4') ?>
+                    <span>Hubungi WhatsApp CS</span>
                 </a>
             </div>
         </div>
