@@ -400,3 +400,212 @@ function require_auth(?string $requiredRole = null): void
         redirect('/admin');
     }
 }
+
+/**
+ * ===================================================================
+ * FnB RESTAURANT OPERATIONS HELPERS (KDS, POS, ESC/POS THERMAL)
+ * ===================================================================
+ */
+
+/**
+ * Generate unique order number (e.g. ORD-20261104-A1B2)
+ */
+function generate_order_number(): string
+{
+    return 'ORD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(2)));
+}
+
+/**
+ * Calculate Subtotal, Service Charge (5%), Tax PB1 (10%), and Grand Total
+ */
+function calculate_order_totals(array $items, float $serviceRate = 0.05, float $taxRate = 0.10): array
+{
+    $subtotal = 0;
+    foreach ($items as $item) {
+        $qty = (int)($item['quantity'] ?? 1);
+        $price = (int)($item['unit_price'] ?? $item['price'] ?? 0);
+        $subtotal += ($qty * $price);
+    }
+
+    $serviceCharge = (int)round($subtotal * $serviceRate);
+    $taxAmount = (int)round(($subtotal + $serviceCharge) * $taxRate);
+    $grandTotal = $subtotal + $serviceCharge + $taxAmount;
+
+    return [
+        'subtotal'       => $subtotal,
+        'service_charge' => $serviceCharge,
+        'tax_amount'     => $taxAmount,
+        'grand_total'    => $grandTotal,
+    ];
+}
+
+/**
+ * SLA Aging Timer Formatter for KDS
+ */
+function format_ticket_aging(int $seconds): string
+{
+    if ($seconds < 0) {
+        $seconds = 0;
+    }
+    $minutes = (int)floor($seconds / 60);
+    $secs = $seconds % 60;
+    if ($minutes < 60) {
+        return sprintf('%02d:%02d', $minutes, $secs);
+    }
+    $hours = (int)floor($minutes / 60);
+    $remMinutes = $minutes % 60;
+    return sprintf('%dj %02dm', $hours, $remMinutes);
+}
+
+/**
+ * SLA Aging Color Badge (Green < 10m, Amber 10-15m, Red > 15m)
+ */
+function get_ticket_aging_color(int $seconds): string
+{
+    if ($seconds < 600) {
+        return 'emerald'; // Green (< 10 mins)
+    } elseif ($seconds < 900) {
+        return 'amber';   // Amber (10 - 15 mins)
+    }
+    return 'rose';        // Red (> 15 mins - Overdue)
+}
+
+/**
+ * Thermal ESC/POS & Browser Receipt Formatter (58mm / 80mm)
+ */
+class ReceiptPrinter
+{
+    public const WIDTH_58MM = 32;
+    public const WIDTH_80MM = 48;
+
+    public static function toPrintableAscii(string $text): string
+    {
+        $replacements = [
+            '“' => '"', '”' => '"', '‘' => "'", '’' => "'",
+            '—' => '-', '–' => '-', '…' => '...', '·' => '-',
+            '×' => 'x', '•' => '-', '☕' => '', '🍲' => ''
+        ];
+        $clean = strtr($text, $replacements);
+        return preg_replace('/[^\x20-\x7E\n]/', '', $clean) ?? '';
+    }
+
+    public static function padColumns(string $left, string $right, int $width = 32): string
+    {
+        $left = self::toPrintableAscii($left);
+        $right = self::toPrintableAscii($right);
+        $available = max(0, $width - strlen($right) - 1);
+        if (strlen($left) > $available) {
+            $left = substr($left, 0, $available);
+        }
+        $spaces = max(1, $width - strlen($left) - strlen($right));
+        return $left . str_repeat(' ', $spaces) . $right;
+    }
+
+    public static function center(string $text, int $width = 32): string
+    {
+        $text = trim(self::toPrintableAscii($text));
+        $len = strlen($text);
+        if ($len >= $width) {
+            return substr($text, 0, $width);
+        }
+        $padLeft = (int)floor(($width - $len) / 2);
+        return str_repeat(' ', $padLeft) . $text;
+    }
+
+    public static function divider(string $char = '-', int $width = 32): string
+    {
+        return str_repeat(substr($char, 0, 1), $width);
+    }
+
+    /**
+     * Generate standard plain-text receipt
+     */
+    public static function formatPlainText(array $order, array $settings, int $paperWidth = 58): string
+    {
+        $width = ($paperWidth === 80) ? self::WIDTH_80MM : self::WIDTH_58MM;
+        $siteName = $settings['site_name'] ?? 'Kopi & Rasa Nusantara';
+        $tagline = $settings['tagline'] ?? 'Cita Rasa Otentik Kuliner Nusantara';
+        $lines = [];
+
+        // Header
+        $lines[] = self::center(strtoupper($siteName), $width);
+        if (!empty($tagline)) {
+            $lines[] = self::center($tagline, $width);
+        }
+        $lines[] = self::divider('=', $width);
+
+        // Order Info
+        $orderNo = $order['order_number'] ?? 'ORD-0000';
+        $createdAt = !empty($order['created_at']) ? date('d/m/Y H:i', strtotime($order['created_at'])) : date('d/m/Y H:i');
+        $lines[] = self::padColumns('No. Nota:', $orderNo, $width);
+        $lines[] = self::padColumns('Waktu   :', $createdAt, $width);
+        $lines[] = self::padColumns('Pelanggan:', $order['customer_name'] ?? 'Tamu', $width);
+        
+        $tableNumber = !empty($order['table_number']) ? 'Meja ' . $order['table_number'] : ($order['order_type'] ?? 'DINE_IN');
+        $lines[] = self::padColumns('Layanan :', $tableNumber, $width);
+        $lines[] = self::divider('-', $width);
+
+        // Items List
+        $items = $order['items'] ?? [];
+        foreach ($items as $item) {
+            $name = $item['menu_name'] ?? $item['name'] ?? 'Item';
+            $qty = (int)($item['quantity'] ?? 1);
+            $unitPrice = (int)($item['unit_price'] ?? $item['price'] ?? 0);
+            $lineTotal = (int)($item['line_total'] ?? ($qty * $unitPrice));
+
+            $lines[] = self::toPrintableAscii($name);
+            $priceDetail = $qty . ' x ' . format_rupiah($unitPrice, false);
+            $lines[] = self::padColumns('  ' . $priceDetail, format_rupiah($lineTotal), $width);
+
+            if (!empty($item['variants_selected'])) {
+                $lines[] = '   (' . self::toPrintableAscii($item['variants_selected']) . ')';
+            }
+            if (!empty($item['notes'])) {
+                $lines[] = '   *Catatan: ' . self::toPrintableAscii($item['notes']);
+            }
+        }
+        $lines[] = self::divider('-', $width);
+
+        // Totals
+        $subtotal = (int)($order['subtotal'] ?? 0);
+        $service = (int)($order['service_charge'] ?? 0);
+        $tax = (int)($order['tax_amount'] ?? 0);
+        $grandTotal = (int)($order['grand_total'] ?? ($subtotal + $service + $tax));
+
+        $lines[] = self::padColumns('Subtotal', format_rupiah($subtotal), $width);
+        if ($service > 0) {
+            $lines[] = self::padColumns('Service (5%)', format_rupiah($service), $width);
+        }
+        if ($tax > 0) {
+            $lines[] = self::padColumns('PB1 Resto (10%)', format_rupiah($tax), $width);
+        }
+        $lines[] = self::divider('=', $width);
+        $lines[] = self::padColumns('TOTAL BAYAR', format_rupiah($grandTotal), $width);
+
+        // Payment status
+        $payMethod = strtoupper($order['payment_method'] ?? 'CASH');
+        $payStatus = strtoupper($order['payment_status'] ?? 'PAID');
+        $lines[] = self::padColumns('Metode Bayar', $payMethod . ' (' . $payStatus . ')', $width);
+        $lines[] = self::divider('-', $width);
+
+        // Footer
+        $lines[] = self::center('Terima kasih atas kunjungan Anda!', $width);
+        $lines[] = self::center('Harap simpan struk ini sebagai bukti.', $width);
+        $lines[] = self::center('WiFi: ' . ($settings['wifi_ssid'] ?? 'FnB-Guest') . ' | Pass: ' . ($settings['wifi_pass'] ?? 'kopi1234'), $width);
+
+        return implode("\n", $lines) . "\n";
+    }
+
+    /**
+     * Generate binary ESC/POS payload for thermal printers
+     */
+    public static function formatEscPos(array $order, array $settings, int $paperWidth = 58): string
+    {
+        $plain = self::formatPlainText($order, $settings, $paperWidth);
+        $esc = "\x1B";
+        $gs = "\x1D";
+
+        // INIT + Text + Feed 3 lines + Partial Cut
+        return $esc . "@" . $plain . $esc . "d\x03" . $gs . "V\x41\x00";
+    }
+}

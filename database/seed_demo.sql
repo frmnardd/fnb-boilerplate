@@ -37,9 +37,9 @@ INSERT INTO categories (id, name, slug, icon, sort_order, is_active) VALUES
 (2, 'Makanan Utama', 'makanan-utama', 'utensils', 2, 1),
 (3, 'Camilan Tradisional', 'camilan-tradisional', 'cookie', 3, 1);
 
--- 3. Menus (8 Menu Pilihan dengan Varian JSON & Indikator Stok)
+-- 3. Menus (8 Menu Pilihan dengan Varian JSON, HPP / Cost Price, dan Station)
 INSERT INTO menus (
-    id, category_id, name, slug, description, price, strike_price, image_url, variants_json, is_available, is_featured, sort_order
+    id, category_id, name, slug, description, price, cost_price, strike_price, image_url, variants_json, station, is_available, is_featured, sort_order
 ) VALUES
 (
     1,
@@ -48,9 +48,11 @@ INSERT INTO menus (
     'kopi-susu-gula-aren-senja',
     'Espresso robusta Lampung premium dipadu susu segar creamy dan gula aren organik murni khas Lebak.',
     22000,
+    7500,
     28000,
     '/assets/images/menu-kopi-aren.jpg',
     '{"options":[{"name":"Ukuran","choices":[{"name":"Regular","extra_price":0},{"name":"Large (+5k)","extra_price":5000}]},{"name":"Level Manis","choices":[{"name":"Normal Sweet","extra_price":0},{"name":"Less Sugar (50%)","extra_price":0}]},{"name":"Es Batu","choices":[{"name":"Normal Ice","extra_price":0},{"name":"Less Ice","extra_price":0}]}]}',
+    'BAR',
     1,
     1,
     1
@@ -62,9 +64,11 @@ INSERT INTO menus (
     'manual-brew-kopi-gayo-v60',
     'Single origin Arabika Gayo Aceh diseduh metode pour-over V60 dengan notes floral, citrus cerah, dan aftertaste manis.',
     28000,
+    9000,
     NULL,
     '/assets/images/menu-kopi-gayo.jpg',
     '{"options":[{"name":"Suhu Penyajian","choices":[{"name":"Hot (Hangat)","extra_price":0},{"name":"Iced (Dingin)","extra_price":2000}]}]}',
+    'BAR',
     1,
     1,
     2
@@ -76,9 +80,11 @@ INSERT INTO menus (
     'es-kopi-pandan-wangi',
     'Kombinasi unik kopi susu lembut dengan aroma ekstrak daun pandan alami yang harum dan menyegarkan.',
     24000,
+    8000,
     30000,
     '/assets/images/menu-kopi-pandan.jpg',
     '{"options":[{"name":"Ukuran","choices":[{"name":"Regular","extra_price":0},{"name":"Large (+5k)","extra_price":5000}]}]}',
+    'BAR',
     1,
     0,
     3
@@ -90,9 +96,11 @@ INSERT INTO menus (
     'nasi-goreng-kampung-rempah',
     'Nasi goreng bumbu racikan terasi bakar khas pesisir disajikan dengan ayam suwir, telur mata sapi, dan kerupuk udang.',
     35000,
+    13500,
     42000,
     '/assets/images/menu-nasgor.jpg',
     '{"options":[{"name":"Level Kepedasan","choices":[{"name":"Level 1 (Sedang)","extra_price":0},{"name":"Level 2 (Pedas)","extra_price":0},{"name":"Level 3 (Super Pedas)","extra_price":2000}]},{"name":"Topping Tambahan","choices":[{"name":"Tanpa Topping","extra_price":0},{"name":"Ekstra Telur Mata Sapi","extra_price":5000},{"name":"Ekstra Ayam Suwir Gurih","extra_price":8000}]}]}',
+    'KITCHEN',
     1,
     1,
     4
@@ -104,9 +112,11 @@ INSERT INTO menus (
     'ayam-bakar-madu-taliwang',
     'Ayam pejantan bakar bumbu pedas manis madu hutan khas Lombok disajikan dengan sambal terasi dan plecing kangkung.',
     42000,
+    18000,
     NULL,
     '/assets/images/menu-ayam-taliwang.jpg',
     '{"options":[{"name":"Pilihan Nasi","choices":[{"name":"Paket Nasi Putih Wangi","extra_price":5000},{"name":"Tanpa Nasi (Ayam Saja)","extra_price":0}]}]}',
+    'KITCHEN',
     1,
     1,
     5
@@ -118,9 +128,11 @@ INSERT INTO menus (
     'mie-goreng-jawa-nyemek',
     'Mie telur kuning dimasak basah kuah kental gurih berempah dengan irisan bakso sapi, kubis, dan taburan bawang merah goreng.',
     32000,
+    11000,
     NULL,
     '/assets/images/menu-mie-nyemek.jpg',
     '{"options":[{"name":"Level Pedas","choices":[{"name":"Tidak Pedas","extra_price":0},{"name":"Pedas Sedang","extra_price":0},{"name":"Pedas Mampus","extra_price":2000}]}]}',
+    'KITCHEN',
     0,
     0,
     6
@@ -132,9 +144,11 @@ INSERT INTO menus (
     'pisang-goreng-wijen-madu',
     'Pisang raja matang legit digoreng krispi dengan balutan wijen sangrai gurih dan siraman madu randu asli.',
     20000,
+    6500,
     25000,
     '/assets/images/menu-pisang-goreng.jpg',
     '{"options":[{"name":"Saus Cocolan","choices":[{"name":"Original Madu Randu","extra_price":0},{"name":"Saus Cokelat Belgia","extra_price":3000},{"name":"Taburan Keju Cheddar","extra_price":4000}]}]}',
+    'KITCHEN',
     1,
     1,
     7
@@ -146,20 +160,98 @@ INSERT INTO menus (
     'cireng-krispi-bumbu-rujak',
     'Cireng renyah di luar dan kenyal empuk di dalam, disajikan hangat dengan saus cocolan gula merah rujak pedas asam segar.',
     18000,
+    5000,
     NULL,
     '/assets/images/menu-cireng.jpg',
     '{"options":[{"name":"Porsi","choices":[{"name":"Porsi Regular (10 pcs)","extra_price":0},{"name":"Porsi Jumbo (15 pcs)","extra_price":7000}]}]}',
+    'KITCHEN',
     1,
     0,
     8
 );
 
--- 4. Promos (Penawaran Menarik)
+-- 4. Tables (Studio Meja & QR Ordering)
+INSERT INTO tables (id, table_number, area, qr_slug, pin, status) VALUES
+(1, '01', 'Indoor', 'meja-01', '1234', 'OCCUPIED'),
+(2, '02', 'Indoor', 'meja-02', '1234', 'AVAILABLE'),
+(3, '03', 'Indoor VIP', 'meja-03', '1234', 'AVAILABLE'),
+(4, '04', 'Outdoor Terrace', 'meja-04', '1234', 'AVAILABLE'),
+(5, '05', 'Outdoor Garden', 'meja-05', '1234', 'NEEDS_CLEANING');
+
+-- 5. Ingredients (Bahan Baku & Stok)
+INSERT INTO ingredients (id, sku, name, unit, current_stock, min_threshold, cost_per_unit, is_active) VALUES
+(1, 'ING-KOP-01', 'Biji Kopi Arabika Gayo', 'GRAM', 5000.00, 1000.00, 250, 1),
+(2, 'ING-SUS-01', 'Susu Segar UHT Fresh Milk', 'ML', 12000.00, 2000.00, 25, 1),
+(3, 'ING-GUL-01', 'Gula Aren Cair Organik', 'ML', 8000.00, 1500.00, 30, 1),
+(4, 'ING-BER-01', 'Beras Ramos Organik', 'GRAM', 25000.00, 5000.00, 15, 1),
+(5, 'ING-AYM-01', 'Daging Ayam Pejantan', 'GRAM', 8500.00, 2000.00, 60, 1),
+(6, 'ING-TLR-01', 'Telur Ayam Negeri Fresh', 'PIECE', 120.00, 30.00, 2000, 1);
+
+-- 6. Menu Recipes (Bill of Materials - HPP Calculation)
+INSERT INTO menu_recipes (id, menu_id, ingredient_id, quantity) VALUES
+(1, 1, 1, 18.00), -- Kopi Aren: 18g Kopi
+(2, 1, 2, 120.00), -- Kopi Aren: 120ml Susu
+(3, 1, 3, 25.00),  -- Kopi Aren: 25ml Aren
+(4, 2, 1, 15.00),  -- Manual Brew: 15g Biji Kopi Gayo
+(5, 4, 4, 150.00), -- Nasi Goreng: 150g Beras
+(6, 4, 5, 80.00),  -- Nasi Goreng: 80g Ayam
+(7, 4, 6, 1.00);   -- Nasi Goreng: 1 butir Telur
+
+-- 7. Orders & Order Items (Demo Orders for POS & KDS)
+INSERT INTO orders (
+    id, order_number, order_type, table_id, customer_name, customer_phone,
+    status, subtotal, service_charge, tax_amount, grand_total, payment_method, payment_status, notes
+) VALUES
+(
+    1,
+    'ORD-2026-001',
+    'DINE_IN',
+    1,
+    'Budi Santoso',
+    '081234567890',
+    'COOKING',
+    57000,
+    2850,
+    5985,
+    65835,
+    'CASH',
+    'PAID',
+    'Meja 01 - Mohon diproses cepat ya'
+),
+(
+    2,
+    'ORD-2026-002',
+    'DINE_IN',
+    2,
+    'Siti Rahma',
+    '085678901234',
+    'PENDING',
+    42000,
+    2100,
+    4410,
+    48510,
+    'QRIS',
+    'PENDING',
+    'Pedas sedang'
+);
+
+INSERT INTO order_items (
+    id, order_id, menu_id, menu_name, quantity, unit_price, line_total, station, item_status, notes, variants_selected
+) VALUES
+(1, 1, 1, 'Kopi Susu Gula Aren Senja', 1, 22000, 22000, 'BAR', 'READY', 'Less Sugar', 'Regular, Less Sugar'),
+(2, 1, 4, 'Nasi Goreng Kampung Rempah', 1, 35000, 35000, 'KITCHEN', 'COOKING', 'Level 2', 'Level 2 (Pedas)'),
+(3, 2, 5, 'Ayam Bakar Madu Taliwang', 1, 42000, 42000, 'KITCHEN', 'QUEUED', 'Plecing pedas', 'Paket Nasi Putih Wangi');
+
+-- 8. Waiter Calls (Customer Table Call Demo)
+INSERT INTO waiter_calls (id, table_id, call_type, status) VALUES
+(1, 1, 'WATER_TISSUE', 'PENDING');
+
+-- 9. Promos (Penawaran Menarik)
 INSERT INTO promos (id, title, banner_url, promo_code, valid_until, is_active) VALUES
 (1, 'Diskon 20% Pembelian Pertama Kopi Susu', '/assets/images/promo-1.jpg', 'KOPIASIK', '2026-12-31', 1),
 (2, 'Paket Kenyang Berdua Hemat Rp 15.000', '/assets/images/promo-2.jpg', 'KENYANG2', '2026-12-31', 1);
 
--- 5. Outlets (3 Cabang Strategis & Aggregator Delivery Link)
+-- 10. Outlets (3 Cabang Strategis & Aggregator Delivery Link)
 INSERT INTO outlets (
     id, name, address, open_hours, gmaps_embed_url, gmaps_link, gofood_url, grabfood_url, shopeefood_url, is_active
 ) VALUES
@@ -200,7 +292,7 @@ INSERT INTO outlets (
     1
 );
 
--- 6. Users (Admin & Kasir)
+-- 11. Users (Admin, Kasir, Dapur, Waiter)
 -- Password for admin: admin123
 -- Password for kasir: kasir123
 INSERT INTO users (id, username, password_hash, role) VALUES

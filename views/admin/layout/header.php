@@ -13,8 +13,10 @@ $currentRoute = parse_url($_SERVER['REQUEST_URI'] ?? '/admin', PHP_URL_PATH);
 // Fetch quick stats for sidebar badges
 try {
     $soldOutCount = (int)db()->query("SELECT COUNT(*) FROM menus WHERE is_available = 0")->fetchColumn();
+    $activeOrdersCount = (int)db()->query("SELECT COUNT(*) FROM orders WHERE status IN ('PENDING', 'CONFIRMED', 'COOKING')")->fetchColumn();
 } catch (\Throwable $e) {
     $soldOutCount = 0;
+    $activeOrdersCount = 0;
 }
 ?>
 <!DOCTYPE html>
@@ -110,6 +112,62 @@ try {
                         <span class="text-lg">📊</span>
                         <span>Dashboard</span>
                     </a>
+
+                    <!-- Operasional Restoran -->
+                    <div class="pt-3 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Operasional Resto
+                    </div>
+
+                    <!-- Pesanan & Kasir POS -->
+                    <a 
+                        href="/admin/orders" 
+                        class="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition <?= str_starts_with($currentRoute, '/admin/orders') ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/60' ?>"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg">🧾</span>
+                            <span>Pesanan & Kasir</span>
+                        </div>
+                        <?php if ($activeOrdersCount > 0): ?>
+                            <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500 text-slate-900 shadow-sm" title="Pesanan Aktif">
+                                <?= $activeOrdersCount ?> Baru
+                            </span>
+                        <?php endif; ?>
+                    </a>
+
+                    <!-- Layar Dapur (KDS) -->
+                    <a 
+                        href="/admin/kds" 
+                        target="_blank"
+                        class="flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition <?= str_starts_with($currentRoute, '/admin/kds') ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/60' ?>"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg">👨‍🍳</span>
+                            <span>Layar Dapur (KDS)</span>
+                        </div>
+                        <span class="text-[10px] uppercase font-black px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">Live</span>
+                    </a>
+
+                    <!-- Studio Meja & QR -->
+                    <a 
+                        href="/admin/tables" 
+                        class="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition <?= str_starts_with($currentRoute, '/admin/tables') ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/60' ?>"
+                    >
+                        <span class="text-lg">🪑</span>
+                        <span>Studio Meja & QR</span>
+                    </a>
+
+                    <!-- Inventori Bahan & HPP -->
+                    <a 
+                        href="/admin/inventory" 
+                        class="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition <?= str_starts_with($currentRoute, '/admin/inventory') ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/60' ?>"
+                    >
+                        <span class="text-lg">📦</span>
+                        <span>Inventori & HPP</span>
+                    </a>
+
+                    <div class="pt-3 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Katalog & Outlet
+                    </div>
 
                     <!-- Kelola Menu & Stok -->
                     <a 

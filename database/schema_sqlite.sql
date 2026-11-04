@@ -5,6 +5,12 @@
 
 PRAGMA foreign_keys = ON;
 
+DROP TABLE IF EXISTS "menu_recipes";
+DROP TABLE IF EXISTS "ingredients";
+DROP TABLE IF EXISTS "waiter_calls";
+DROP TABLE IF EXISTS "order_items";
+DROP TABLE IF EXISTS "orders";
+DROP TABLE IF EXISTS "tables";
 DROP TABLE IF EXISTS "menus";
 DROP TABLE IF EXISTS "categories";
 DROP TABLE IF EXISTS "promos";
@@ -62,9 +68,11 @@ CREATE TABLE IF NOT EXISTS "menus" (
     "slug" TEXT NOT NULL UNIQUE,
     "description" TEXT,
     "price" INTEGER NOT NULL DEFAULT 0,
+    "cost_price" INTEGER NOT NULL DEFAULT 0,
     "strike_price" INTEGER DEFAULT NULL,
     "image_url" TEXT DEFAULT NULL,
     "variants_json" TEXT DEFAULT NULL,
+    "station" TEXT NOT NULL DEFAULT 'KITCHEN',
     "is_available" INTEGER NOT NULL DEFAULT 1,
     "is_featured" INTEGER NOT NULL DEFAULT 0,
     "sort_order" INTEGER NOT NULL DEFAULT 0,
@@ -74,7 +82,103 @@ CREATE TABLE IF NOT EXISTS "menus" (
 );
 
 -- -------------------------------------------------------------------
--- 4. Table: promos
+-- 4. Table: tables
+-- -------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "tables" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "table_number" TEXT NOT NULL,
+    "area" TEXT NOT NULL DEFAULT 'Indoor',
+    "qr_slug" TEXT NOT NULL UNIQUE,
+    "pin" TEXT DEFAULT '1234',
+    "status" TEXT NOT NULL DEFAULT 'AVAILABLE',
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- -------------------------------------------------------------------
+-- 5. Table: orders
+-- -------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "orders" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "order_number" TEXT NOT NULL UNIQUE,
+    "order_type" TEXT NOT NULL DEFAULT 'DINE_IN',
+    "table_id" INTEGER DEFAULT NULL,
+    "customer_name" TEXT NOT NULL,
+    "customer_phone" TEXT DEFAULT NULL,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "subtotal" INTEGER NOT NULL DEFAULT 0,
+    "service_charge" INTEGER NOT NULL DEFAULT 0,
+    "tax_amount" INTEGER NOT NULL DEFAULT 0,
+    "grand_total" INTEGER NOT NULL DEFAULT 0,
+    "payment_method" TEXT NOT NULL DEFAULT 'CASH',
+    "payment_status" TEXT NOT NULL DEFAULT 'PENDING',
+    "notes" TEXT DEFAULT NULL,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("table_id") REFERENCES "tables" ("id") ON DELETE SET NULL
+);
+
+-- -------------------------------------------------------------------
+-- 6. Table: order_items
+-- -------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "order_items" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "order_id" INTEGER NOT NULL,
+    "menu_id" INTEGER DEFAULT NULL,
+    "menu_name" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "unit_price" INTEGER NOT NULL DEFAULT 0,
+    "line_total" INTEGER NOT NULL DEFAULT 0,
+    "station" TEXT NOT NULL DEFAULT 'KITCHEN',
+    "item_status" TEXT NOT NULL DEFAULT 'QUEUED',
+    "notes" TEXT DEFAULT NULL,
+    "variants_selected" TEXT DEFAULT NULL,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("order_id") REFERENCES "orders" ("id") ON DELETE CASCADE
+);
+
+-- -------------------------------------------------------------------
+-- 7. Table: waiter_calls
+-- -------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "waiter_calls" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "table_id" INTEGER NOT NULL,
+    "call_type" TEXT NOT NULL DEFAULT 'WATER_TISSUE',
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("table_id") REFERENCES "tables" ("id") ON DELETE CASCADE
+);
+
+-- -------------------------------------------------------------------
+-- 8. Table: ingredients
+-- -------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "ingredients" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "sku" TEXT NOT NULL UNIQUE,
+    "name" TEXT NOT NULL,
+    "unit" TEXT NOT NULL DEFAULT 'GRAM',
+    "current_stock" REAL NOT NULL DEFAULT 0,
+    "min_threshold" REAL NOT NULL DEFAULT 10,
+    "cost_per_unit" INTEGER NOT NULL DEFAULT 0,
+    "is_active" INTEGER NOT NULL DEFAULT 1,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- -------------------------------------------------------------------
+-- 9. Table: menu_recipes
+-- -------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "menu_recipes" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "menu_id" INTEGER NOT NULL,
+    "ingredient_id" INTEGER NOT NULL,
+    "quantity" REAL NOT NULL DEFAULT 1,
+    FOREIGN KEY ("menu_id") REFERENCES "menus" ("id") ON DELETE CASCADE,
+    FOREIGN KEY ("ingredient_id") REFERENCES "ingredients" ("id") ON DELETE CASCADE
+);
+
+-- -------------------------------------------------------------------
+-- 10. Table: promos
 -- -------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS "promos" (
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,7 +192,7 @@ CREATE TABLE IF NOT EXISTS "promos" (
 );
 
 -- -------------------------------------------------------------------
--- 5. Table: outlets
+-- 11. Table: outlets
 -- -------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS "outlets" (
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,7 +210,7 @@ CREATE TABLE IF NOT EXISTS "outlets" (
 );
 
 -- -------------------------------------------------------------------
--- 6. Table: users
+-- 12. Table: users
 -- -------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS "users" (
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,

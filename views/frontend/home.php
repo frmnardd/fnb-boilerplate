@@ -49,9 +49,34 @@ $menusPayload = array_map(function($m) {
     ];
 }, $menus);
 
+// Active Dine-in Table Detection (from Table QR Code scan)
+$activeTable = null;
+$tableSlug = trim($_GET['table'] ?? ($_SESSION['active_table']['qr_slug'] ?? ''));
+if (!empty($tableSlug)) {
+    $stmtT = $pdo->prepare("SELECT * FROM tables WHERE qr_slug = :slug LIMIT 1");
+    $stmtT->execute(['slug' => $tableSlug]);
+    $foundTable = $stmtT->fetch();
+    if ($foundTable) {
+        $activeTable = $foundTable;
+        $_SESSION['active_table'] = $foundTable;
+    }
+}
+
 // Load Header Layout
 require dirname(__DIR__) . '/layouts/header.php';
 ?>
+
+<?php if ($activeTable): ?>
+    <!-- Active Dine-in Table Banner -->
+    <div class="bg-slate-900 text-white py-3 px-4 text-center text-xs font-bold flex flex-wrap items-center justify-center gap-2 border-b border-slate-800 shadow-sm sticky top-0 z-30">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary text-white text-[11px] font-black uppercase">
+            🪑 Meja <?= e($activeTable['table_number']) ?>
+        </span>
+        <span class="text-slate-300">
+            Area <?= e($activeTable['area']) ?> • Pesanan Anda terhubung langsung ke Dapur & Kasir
+        </span>
+    </div>
+<?php endif; ?>
 
 <main class="space-y-16 sm:space-y-24 pb-20">
 
@@ -550,6 +575,154 @@ require dirname(__DIR__) . '/layouts/header.php';
     </section>
 
 </main>
+
+<?php if ($activeTable): ?>
+<!-- Floating Call Waiter Button & Modal (Bottom Left) -->
+<div 
+    x-data="{
+        callOpen: false,
+        calling: false,
+        callSuccess: false,
+        selectedType: 'WATER_TISSUE',
+        async submitCall() {
+            this.calling = true;
+            try {
+                const form = new FormData();
+                form.append('table_id', '<?= $activeTable['id'] ?>');
+                form.append('call_type', this.selectedType);
+                const res = await fetch('/api/call-waiter', { method: 'POST', body: form });
+                const data = await res.json();
+                if (data.success) {
+                    this.callSuccess = true;
+                    setTimeout(() => { this.callOpen = false; this.callSuccess = false; }, 2500);
+                } else {
+                    alert(data.message || 'Gagal memanggil pelayan.');
+                }
+            } catch(e) {
+                alert('Gagal memanggil pelayan. Silakan hubungi kasir.');
+            } finally {
+                this.calling = false;
+            }
+        }
+    }"
+>
+    <!-- Floating Trigger -->
+    <div class="fixed bottom-6 left-6 z-40">
+        <button 
+            @click="callOpen = true"
+            class="flex items-center gap-2.5 px-4 py-3.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-2xl shadow-slate-900/40 border-2 border-white/20 transition-all active:scale-95 hover:scale-105"
+        >
+            <span class="text-base animate-bounce">🛎️</span>
+            <span>Panggil Pelayan (Meja <?= e($activeTable['table_number']) ?>)</span>
+        </button>
+    </div>
+
+    <!-- Modal Panggil Pelayan -->
+    <div 
+        x-show="callOpen" 
+        x-cloak 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+    >
+        <div 
+            @click.away="callOpen = false" 
+            class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-100"
+        >
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">🛎️</span>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Panggil Pelayan</h3>
+                        <p class="text-[11px] text-slate-400">Meja <?= e($activeTable['table_number']) ?> (<?= e($activeTable['area']) ?>)</p>
+                    </div>
+                </div>
+                <button @click="callOpen = false" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+            </div>
+
+            <!-- Success State -->
+            <div x-show="callSuccess" class="py-8 text-center space-y-2">
+                <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 text-2xl flex items-center justify-center mx-auto">
+                    ✓
+                </div>
+                <h4 class="text-base font-bold text-slate-900">Panggilan Diterima!</h4>
+                <p class="text-xs text-slate-500">Pelayan segera menuju ke Meja <?= e($activeTable['table_number']) ?>.</p>
+            </div>
+
+            <!-- Selection Options Form -->
+            <div x-show="!callSuccess" class="mt-5 space-y-3">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Kebutuhan Layanan:</label>
+
+                <div class="grid grid-cols-1 gap-2.5">
+                    <label 
+                        @click="selectedType = 'WATER_TISSUE'"
+                        :class="selectedType === 'WATER_TISSUE' ? 'border-primary bg-primary/5 text-slate-900 font-bold' : 'border-slate-200 text-slate-700'"
+                        class="p-3 rounded-2xl border flex items-center gap-3 cursor-pointer transition text-xs"
+                    >
+                        <span class="text-lg">💧</span>
+                        <div class="flex-1">
+                            <span class="block font-bold">Minta Air Mineral & Tissue</span>
+                            <span class="text-[10px] text-slate-400 block">Antar air minum atau tisu tambahan</span>
+                        </div>
+                    </label>
+
+                    <label 
+                        @click="selectedType = 'ASK_MENU'"
+                        :class="selectedType === 'ASK_MENU' ? 'border-primary bg-primary/5 text-slate-900 font-bold' : 'border-slate-200 text-slate-700'"
+                        class="p-3 rounded-2xl border flex items-center gap-3 cursor-pointer transition text-xs"
+                    >
+                        <span class="text-lg">🙋</span>
+                        <div class="flex-1">
+                            <span class="block font-bold">Panggil Pelayan ke Meja</span>
+                            <span class="text-[10px] text-slate-400 block">Bantuan informasi atau rekomendasi menu</span>
+                        </div>
+                    </label>
+
+                    <label 
+                        @click="selectedType = 'CLEAN_TABLE'"
+                        :class="selectedType === 'CLEAN_TABLE' ? 'border-primary bg-primary/5 text-slate-900 font-bold' : 'border-slate-200 text-slate-700'"
+                        class="p-3 rounded-2xl border flex items-center gap-3 cursor-pointer transition text-xs"
+                    >
+                        <span class="text-lg">🧹</span>
+                        <div class="flex-1">
+                            <span class="block font-bold">Bersihkan Meja</span>
+                            <span class="text-[10px] text-slate-400 block">Angkat piring kotor atau lap meja</span>
+                        </div>
+                    </label>
+
+                    <label 
+                        @click="selectedType = 'REQUEST_BILL'"
+                        :class="selectedType === 'REQUEST_BILL' ? 'border-primary bg-primary/5 text-slate-900 font-bold' : 'border-slate-200 text-slate-700'"
+                        class="p-3 rounded-2xl border flex items-center gap-3 cursor-pointer transition text-xs"
+                    >
+                        <span class="text-lg">🧾</span>
+                        <div class="flex-1">
+                            <span class="block font-bold">Minta Tagihan / Bill</span>
+                            <span class="text-[10px] text-slate-400 block">Siapkan struk dan metode bayar</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="pt-4 flex items-center justify-end gap-3">
+                    <button 
+                        type="button" 
+                        @click="callOpen = false" 
+                        class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition"
+                    >
+                        Batal
+                    </button>
+                    <button 
+                        type="button" 
+                        @click="submitCall()" 
+                        :disabled="calling"
+                        class="px-6 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-md shadow-primary/20 hover:opacity-95 transition flex items-center gap-1.5"
+                    >
+                        <span x-text="calling ? 'Memanggil...' : 'Kirim Panggilan'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php
 // Load Footer Layout
